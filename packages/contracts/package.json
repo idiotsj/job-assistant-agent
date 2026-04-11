@@ -1,0 +1,30 @@
+{
+  "name": "@job-assistant/contracts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./auth": "./src/auth.ts",
+    "./cases": "./src/cases.ts",
+    "./civil-service": "./src/civil-service.ts",
+    "./companies": "./src/companies.ts",
+    "./daily-content": "./src/daily-content.ts",
+    "./events": "./src/events.ts",
+    "./http": "./src/http.ts",
+    "./jobs": "./src/jobs.ts",
+    "./postgraduate": "./src/postgraduate.ts",
+    "./profile": "./src/profile.ts",
+    "./recommendation": "./src/recommendation.ts",
+    "./schedule": "./src/schedule.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.2",
+    "typescript": "6.0.2"
+  }
+}
