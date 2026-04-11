@@ -1,0 +1,47 @@
+[
+  {
+    "id": "score-1",
+    "userId": "user-1",
+    "input": {
+      "profile": {
+        "userId": "user-1",
+        "targetIndustries": ["互联网"],
+        "targetCities": ["上海"],
+        "skills": ["React", "TypeScript"],
+        "preferredJobTypes": ["前端开发"]
+      },
+      "jobs": [
+        {
+          "id": "job-1",
+          "title": "前端开发实习生",
+          "companyId": "company-1",
+          "companyName": "星河科技",
+          "companyIndustry": "互联网",
+          "workLocation": "上海",
+          "tags": ["前端"],
+          "requiredSkills": ["React", "TypeScript"],
+          "description": "负责页面开发。",
+          "isFeatured": true,
+          "deadline": "2026-04-20T00:00:00.000Z",
+          "publishedAt": "2026-04-10T00:00:00.000Z",
+          "popularity": 90
+        },
+        {
+          "id": "job-2",
+          "title": "数据分析助理",
+          "companyId": "company-2",
+          "companyName": "明日数据",
+          "companyIndustry": "数据服务",
+          "workLocation": "北京",
+          "tags": ["数据"],
+          "requiredSkills": ["Python"],
+          "description": "负责报表分析。",
+          "isFeatured": false,
+          "deadline": "2026-04-25T00:00:00.000Z",
+          "publishedAt": "2026-04-09T00:00:00.000Z",
+          "popularity": 60
+        }
+      ]
+    }
+  }
+]

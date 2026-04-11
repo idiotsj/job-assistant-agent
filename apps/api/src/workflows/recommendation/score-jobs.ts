@@ -1,6 +1,6 @@
 import { isWithinDays, overlapCount } from "@/core/helpers";
 import { logger } from "@/core/logger";
-import type { AiServiceClient } from "@/integrations/ai-service/client";
+import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai-service/client";
 import type { RecommendedJob } from "@/modules/recommendation/schema";
 import type { JobRepository } from "@/modules/jobs/repository";
 import type { ProfileRepository } from "@/modules/profile/repository";
@@ -89,6 +89,7 @@ export async function scoreJobsWithFallback(
   jobs: Awaited<ReturnType<JobRepository["list"]>>["items"],
   profile: Awaited<ReturnType<ProfileRepository["getByUserId"]>>,
   aiService: AiServiceClient,
+  context: AiServiceRequestContext = {},
 ): Promise<RecommendedJob[]> {
   const ruleBased = scoreJobsRuleBased(jobs, profile);
 
@@ -100,14 +101,18 @@ export async function scoreJobsWithFallback(
     const aiScores = await aiService.scoreJobs({
       profile,
       jobs,
+    }, {
+      ...context,
+      userId,
+      capability: context.capability ?? "job_scoring",
     });
 
-    if (aiScores.length === 0) {
+    if (aiScores.items.length === 0) {
       logger.warn("AI job scoring returned no candidates; using TypeScript ranking", { userId });
       return rerankJobs(ruleBased);
     }
 
-    const scoreMap = new Map(aiScores.map((item) => [item.jobId, item]));
+    const scoreMap = new Map(aiScores.items.map((item) => [item.jobId, item]));
 
     const merged = ruleBased
       .map((job) => {

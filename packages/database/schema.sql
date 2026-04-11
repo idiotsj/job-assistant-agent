@@ -139,3 +139,30 @@ CREATE TABLE IF NOT EXISTS schedule_items (
   city TEXT,
   description TEXT NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS ai_run_logs (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  capability TEXT NOT NULL,
+  pipeline TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  prompt_version TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('succeeded', 'failed')),
+  request_id TEXT,
+  user_id TEXT,
+  input_json JSONB,
+  output_json JSONB,
+  error_json JSONB,
+  token_usage_json JSONB,
+  latency_ms INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_run_logs_capability_created_at
+  ON ai_run_logs (capability, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_ai_run_logs_request_id
+  ON ai_run_logs (request_id);
+
+CREATE INDEX IF NOT EXISTS idx_ai_run_logs_user_id_created_at
+  ON ai_run_logs (user_id, created_at DESC);

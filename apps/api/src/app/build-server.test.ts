@@ -74,20 +74,64 @@ describe("api server integration", () => {
         {
           aiService: {
             enabled: true,
+            async generateDailyAdvice() {
+              return {
+                advice: {
+                  title: "今天先投递一轮高匹配岗位",
+                  body: "保持投递节奏，同时准备项目亮点说明。",
+                  source: "ai",
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 11,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
             async scoreJobs() {
-              return [];
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 10,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
             },
             async parseResume() {
               return {
-                summary: "完成简历解析",
-                detectedSkills: ["Python"],
-                detectedJobTypes: ["前端开发"],
-                detectedCities: ["上海"],
-                education: {
+                parsed: {
+                  summary: "完成简历解析",
+                  detectedSkills: ["Python"],
+                  detectedJobTypes: ["前端开发"],
+                  detectedCities: ["上海"],
+                  education: {
+                    university: "同济大学",
+                    major: "计算机科学",
+                  },
+                  confidence: 0.88,
+                },
+                patch: {
                   university: "同济大学",
                   major: "计算机科学",
+                  skills: ["Python"],
+                  preferredJobTypes: ["前端开发"],
+                  targetCities: ["上海"],
                 },
-                confidence: 0.88,
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 18,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
               };
             },
           },

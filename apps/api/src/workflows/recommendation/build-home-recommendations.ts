@@ -1,6 +1,6 @@
 import { daysUntil, overlapCount, uniqueBy } from "@/core/helpers";
 import { logger } from "@/core/logger";
-import type { AiServiceClient } from "@/integrations/ai-service/client";
+import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai-service/client";
 import type { CaseRepository } from "@/modules/cases/repository";
 import type { DailyContentService } from "@/modules/daily-content/service";
 import type { EventRepository } from "@/modules/events/repository";
@@ -117,6 +117,7 @@ export interface BuildHomeRecommendationsDeps {
 export async function buildHomeRecommendations(
   userId: string,
   deps: BuildHomeRecommendationsDeps,
+  context: AiServiceRequestContext = {},
 ): Promise<HomeRecommendation> {
   const profile = await deps.profileRepository.getByUserId(userId);
 
@@ -178,10 +179,10 @@ export async function buildHomeRecommendations(
     primaryEvents.items.length === 0 ? "events" : null,
   ].filter((section): section is "jobs" | "cases" | "events" => Boolean(section));
 
-  const todayContent = await deps.dailyContentService.getTodayContent(profile);
+  const todayContent = await deps.dailyContentService.getTodayContent(profile, context);
 
   const payload = homeRecommendationSchema.parse({
-    jobs: await scoreJobsWithFallback(userId, jobCandidates.items, profile, deps.aiService),
+    jobs: await scoreJobsWithFallback(userId, jobCandidates.items, profile, deps.aiService, context),
     cases: scoreCases(caseCandidates.items, profile),
     events: scoreEvents(eventCandidates.items, profile),
     dailyAdvice: todayContent.dailyAdvice,

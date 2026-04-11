@@ -5,6 +5,8 @@ import { success } from "@/core/response/json";
 
 export const GET = withErrorHandling(async (request) => {
   const auth = await requireAuth(request);
-  const recommendations = await getServerAppContext().services.recommendation.getHomeRecommendations(auth.user.id);
+  const recommendations = await getServerAppContext().services.recommendation.getHomeRecommendations(auth.user.id, {
+    requestId: request.headers.get("x-request-id"),
+  });
   return success(recommendations);
 });

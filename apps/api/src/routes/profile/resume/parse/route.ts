@@ -8,6 +8,8 @@ import { profileResumeParseInputSchema } from "@/modules/profile/schema";
 export const POST = withErrorHandling(async (request) => {
   const auth = await requireAuth(request);
   const input = await parseBody(request, profileResumeParseInputSchema);
-  const result = await getServerAppContext().services.profile.parseResume(auth.user.id, input);
+  const result = await getServerAppContext().services.profile.parseResume(auth.user.id, input, {
+    requestId: request.headers.get("x-request-id"),
+  });
   return success(result);
 });

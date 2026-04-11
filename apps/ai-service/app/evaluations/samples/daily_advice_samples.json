@@ -1,0 +1,28 @@
+[
+  {
+    "id": "daily-1",
+    "userId": "user-1",
+    "input": {
+      "profile": {
+        "userId": "user-1",
+        "targetIndustries": ["互联网"],
+        "targetCities": ["上海"],
+        "skills": ["React", "TypeScript"],
+        "preferredJobTypes": ["前端开发"]
+      },
+      "curatedAdvice": {
+        "title": "先投递上海互联网岗位",
+        "body": "你的城市与行业偏好比较明确，今天优先处理高匹配岗位，并准备针对性的项目介绍。"
+      },
+      "featuredCompany": {
+        "id": "company-1",
+        "name": "星河科技",
+        "industry": "互联网",
+        "city": "上海",
+        "description": "校园招聘平台",
+        "isFeatured": true
+      },
+      "featuredJobs": []
+    }
+  }
+]

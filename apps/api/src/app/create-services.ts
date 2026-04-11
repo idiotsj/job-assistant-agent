@@ -22,12 +22,13 @@ export function createServerServices(
   repositories: ServerRepositories,
   options: CreateServerServicesOptions = {},
 ): ServerServices {
+  const aiService = options.aiService ?? createAiServiceClient();
   const dailyContentService = createDailyContentService(
     repositories.dailyContent,
     repositories.companies,
     repositories.jobs,
+    aiService,
   );
-  const aiService = options.aiService ?? createAiServiceClient();
 
   return {
     auth: createAuthService(repositories.auth, options.auth),

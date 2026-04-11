@@ -1,0 +1,18 @@
+[
+  {
+    "id": "resume-1",
+    "userId": "user-1",
+    "input": {
+      "rawText": "同济大学计算机科学专业，熟悉 Python、TypeScript、React，希望在上海从事前端开发。",
+      "fileName": "resume-1.txt"
+    }
+  },
+  {
+    "id": "resume-2",
+    "userId": "user-2",
+    "input": {
+      "rawText": "浙江大学软件工程专业，有 FastAPI 和 SQL 项目经验，希望寻找后端开发岗位。",
+      "fileName": "resume-2.txt"
+    }
+  }
+]

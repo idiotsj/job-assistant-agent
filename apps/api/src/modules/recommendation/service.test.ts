@@ -67,27 +67,54 @@ describe("recommendation service", () => {
   it("prefers Python job scoring when AI service is available", async () => {
     const aiService: AiServiceClient = {
       enabled: true,
+      async generateDailyAdvice() {
+        return {
+          advice: {
+            title: "今天先整理高匹配岗位",
+            body: "你已经有比较明确的目标，可以先处理高匹配岗位投递。",
+            source: "ai",
+          },
+          meta: {
+            provider: "openai",
+            model: "gpt-test",
+            promptVersion: "v1",
+            latencyMs: 14,
+            fallbackUsed: false,
+            tokenUsage: null,
+          },
+        };
+      },
       async scoreJobs() {
-        return [
-          {
-            jobId: "job-2",
-            score: 99,
-            reason: "Python 模型判断更贴近你的近期投递方向",
-            signals: ["preferred_job_type"],
+        return {
+          items: [
+            {
+              jobId: "job-2",
+              score: 99,
+              reason: "Python 模型判断更贴近你的近期投递方向",
+              signals: ["preferred_job_type"],
+            },
+            {
+              jobId: "job-1",
+              score: 60,
+              reason: "仍然匹配，但优先级略低",
+              signals: ["industry_match"],
+            },
+            {
+              jobId: "job-4",
+              score: 45,
+              reason: "曝光质量高，但与你当前近期方向不完全一致",
+              signals: ["featured"],
+            },
+          ],
+          meta: {
+            provider: "openai",
+            model: "gpt-test",
+            promptVersion: "v1",
+            latencyMs: 15,
+            fallbackUsed: false,
+            tokenUsage: null,
           },
-          {
-            jobId: "job-1",
-            score: 60,
-            reason: "仍然匹配，但优先级略低",
-            signals: ["industry_match"],
-          },
-          {
-            jobId: "job-4",
-            score: 45,
-            reason: "曝光质量高，但与你当前近期方向不完全一致",
-            signals: ["featured"],
-          },
-        ];
+        };
       },
       async parseResume() {
         throw new Error("not implemented in test");
@@ -106,6 +133,9 @@ describe("recommendation service", () => {
     const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
     const aiService: AiServiceClient = {
       enabled: true,
+      async generateDailyAdvice() {
+        throw new Error("daily advice unavailable");
+      },
       async scoreJobs() {
         throw new Error("ai unavailable");
       },

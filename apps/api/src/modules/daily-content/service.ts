@@ -1,7 +1,9 @@
 import { overlapCount } from "@/core/helpers";
+import { logger } from "@/core/logger";
 import { type CompanyRepository } from "@/modules/companies/repository";
 import { type DailyContentRepository } from "@/modules/daily-content/repository";
 import { todayContentSchema, type DailyAdvice, type TodayContent } from "@/modules/daily-content/schema";
+import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai-service/client";
 import { type JobRepository } from "@/modules/jobs/repository";
 import { type UserProfile } from "@/modules/profile/schema";
 
@@ -12,16 +14,17 @@ const genericAdvice: DailyAdvice = {
 };
 
 export interface DailyContentService {
-  getTodayContent(profile: UserProfile | null): Promise<TodayContent>;
+  getTodayContent(profile: UserProfile | null, context?: AiServiceRequestContext): Promise<TodayContent>;
 }
 
 export function createDailyContentService(
   repository: DailyContentRepository,
   companyRepository: CompanyRepository,
   jobRepository: JobRepository,
+  aiService: AiServiceClient,
 ): DailyContentService {
   return {
-    async getTodayContent(profile) {
+    async getTodayContent(profile, context = {}) {
       const [adviceCandidates, featuredCompanies, featuredJobs] = await Promise.all([
         repository.listActive("advice"),
         companyRepository.listFeatured(1),
@@ -52,8 +55,38 @@ export function createDailyContentService(
           }
         : genericAdvice;
 
+      let resolvedDailyAdvice = dailyAdvice;
+      if (aiService.enabled && (profile || bestAdvice || featuredCompanies[0] || featuredJobs.items.length > 0)) {
+        try {
+          const aiResult = await aiService.generateDailyAdvice(
+            {
+              profile,
+              curatedAdvice: bestAdvice
+                ? {
+                    title: bestAdvice.title,
+                    body: bestAdvice.body,
+                  }
+                : null,
+              featuredCompany: featuredCompanies[0] ?? null,
+              featuredJobs: featuredJobs.items,
+            },
+            {
+              ...context,
+              userId: context.userId ?? profile?.userId ?? null,
+              capability: context.capability ?? "daily_advice",
+            },
+          );
+          resolvedDailyAdvice = aiResult.advice;
+        } catch (error) {
+          logger.warn("AI daily advice generation failed; using fallback advice", {
+            userId: context.userId ?? profile?.userId ?? null,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
       return todayContentSchema.parse({
-        dailyAdvice,
+        dailyAdvice: resolvedDailyAdvice,
         featuredCompany: featuredCompanies[0] ?? null,
         featuredJobs: featuredJobs.items,
       });

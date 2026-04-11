@@ -1,5 +1,5 @@
 import { AppError } from "@/core/errors/app-error";
-import type { AiServiceClient } from "@/integrations/ai-service/client";
+import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai-service/client";
 import { type ProfileRepository } from "@/modules/profile/repository";
 import {
   type ParsedResume,
@@ -13,7 +13,11 @@ import {
 export interface ProfileService {
   getProfile(userId: string): ReturnType<ProfileRepository["getByUserId"]>;
   saveProfile(userId: string, input: ProfileUpdateInput): ReturnType<ProfileRepository["upsert"]>;
-  parseResume(userId: string, input: ProfileResumeParseInput): Promise<ProfileResumeParseResult>;
+  parseResume(
+    userId: string,
+    input: ProfileResumeParseInput,
+    context?: AiServiceRequestContext,
+  ): Promise<ProfileResumeParseResult>;
 }
 
 function getEmptyProfile(userId: string): UserProfile {
@@ -39,8 +43,12 @@ function mergeUnique(values: string[]) {
 function buildResumePatch(
   current: UserProfile,
   parsed: ParsedResume,
+  suggestedPatch: ProfilePatch | null,
   fileName?: string | null,
 ): ProfilePatch {
+  const patchSkills = mergeUnique([...(suggestedPatch?.skills ?? []), ...parsed.detectedSkills]);
+  const patchJobTypes = mergeUnique([...(suggestedPatch?.preferredJobTypes ?? []), ...parsed.detectedJobTypes]);
+  const patchCities = mergeUnique([...(suggestedPatch?.targetCities ?? []), ...parsed.detectedCities]);
   const patch: ProfilePatch = {
     resumeData: {
       ...(current.resumeData ?? {}),
@@ -52,21 +60,25 @@ function buildResumePatch(
     },
   };
 
-  if (!current.university && parsed.education.university) {
-    patch.university = parsed.education.university;
+  if (!current.university && (suggestedPatch?.university || parsed.education.university)) {
+    patch.university = suggestedPatch?.university ?? parsed.education.university ?? undefined;
   }
 
-  if (!current.major && parsed.education.major) {
-    patch.major = parsed.education.major;
+  if (!current.major && (suggestedPatch?.major || parsed.education.major)) {
+    patch.major = suggestedPatch?.major ?? parsed.education.major ?? undefined;
   }
 
-  const mergedSkills = mergeUnique([...current.skills, ...parsed.detectedSkills]);
+  const mergedSkills = mergeUnique([...current.skills, ...patchSkills]);
   if (mergedSkills.length !== current.skills.length) {
     patch.skills = mergedSkills;
   }
 
-  if (current.preferredJobTypes.length === 0 && parsed.detectedJobTypes.length > 0) {
-    patch.preferredJobTypes = mergeUnique(parsed.detectedJobTypes);
+  if (current.preferredJobTypes.length === 0 && patchJobTypes.length > 0) {
+    patch.preferredJobTypes = patchJobTypes;
+  }
+
+  if (current.targetCities.length === 0 && patchCities.length > 0) {
+    patch.targetCities = patchCities;
   }
 
   return patch;
@@ -89,7 +101,7 @@ export function createProfileService(repository: ProfileRepository, aiService: A
       });
     },
 
-    async parseResume(userId, input) {
+    async parseResume(userId, input, context = {}) {
       const current = (await repository.getByUserId(userId)) ?? getEmptyProfile(userId);
 
       if (!aiService.enabled) {
@@ -100,8 +112,15 @@ export function createProfileService(repository: ProfileRepository, aiService: A
       }
 
       let parsed: ParsedResume;
+      let suggestedPatch: ProfilePatch | null = null;
       try {
-        parsed = await aiService.parseResume(input);
+        const aiResult = await aiService.parseResume(input, {
+          ...context,
+          userId,
+          capability: context.capability ?? "resume_parse",
+        });
+        parsed = aiResult.parsed;
+        suggestedPatch = aiResult.patch;
       } catch (error) {
         throw new AppError("Resume parsing failed", {
           code: "AI_SERVICE_UNAVAILABLE",
@@ -112,7 +131,7 @@ export function createProfileService(repository: ProfileRepository, aiService: A
         });
       }
 
-      const appliedPatch = buildResumePatch(current, parsed, input.fileName ?? null);
+      const appliedPatch = buildResumePatch(current, parsed, suggestedPatch, input.fileName ?? null);
       const profile = await repository.upsert(userId, {
         ...current,
         ...appliedPatch,

@@ -133,26 +133,72 @@ describe("api routes", () => {
   });
 
   it("parses resume into profile and applies conservative profile patch", async () => {
+    let capturedContext: { requestId?: string | null; userId?: string | null; capability?: string | null } | undefined;
     setServerAppContextForTesting(
       createTestAppContext(
         {},
         {
           aiService: {
             enabled: true,
-            async scoreJobs() {
-              return [];
-            },
-            async parseResume() {
+            async generateDailyAdvice() {
               return {
-                summary: "识别到技能和方向",
-                detectedSkills: ["Python", "React"],
-                detectedJobTypes: ["前端开发"],
-                detectedCities: ["上海"],
-                education: {
+                advice: {
+                  title: "今天先投递高匹配岗位",
+                  body: "岗位和方向已经比较清晰，先处理最匹配的职位。",
+                  source: "ai",
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 8,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async scoreJobs() {
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 12,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async parseResume(_input, context) {
+              capturedContext = context;
+              return {
+                parsed: {
+                  summary: "识别到技能和方向",
+                  detectedSkills: ["Python", "React"],
+                  detectedJobTypes: ["前端开发"],
+                  detectedCities: ["上海"],
+                  education: {
+                    university: "同济大学",
+                    major: "计算机科学",
+                  },
+                  confidence: 0.82,
+                },
+                patch: {
                   university: "同济大学",
                   major: "计算机科学",
+                  skills: ["Python", "React"],
+                  preferredJobTypes: ["前端开发"],
+                  targetCities: ["上海"],
                 },
-                confidence: 0.82,
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 25,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
               };
             },
           },
@@ -176,9 +222,13 @@ describe("api routes", () => {
 
     const payload = await response.json();
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-request-id")).toBeTruthy();
     expect(payload.data.parsed.detectedSkills).toContain("Python");
     expect(payload.data.appliedPatch.skills).toContain("Python");
     expect(payload.data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
+    expect(capturedContext?.requestId).toBe(response.headers.get("x-request-id"));
+    expect(capturedContext?.userId).toBe("user-1");
+    expect(capturedContext?.capability).toBe("resume_parse");
   });
 
   it("rejects invalid profile updates", async () => {
@@ -292,7 +342,49 @@ describe("api routes", () => {
   });
 
   it("serves daily content and advice channels for authenticated users", async () => {
-    setServerAppContextForTesting(createTestAppContext());
+    setServerAppContextForTesting(
+      createTestAppContext(
+        {},
+        {
+          aiService: {
+            enabled: true,
+            async generateDailyAdvice() {
+              return {
+                advice: {
+                  title: "先处理今天最匹配的岗位",
+                  body: "你今天适合先投递上海互联网方向的岗位，再补简历细节。",
+                  source: "ai",
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 9,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async scoreJobs() {
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 9,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async parseResume() {
+              throw new Error("not needed");
+            },
+          },
+        },
+      ),
+    );
 
     const todayResponse = await getTodayContent(
       new Request("http://localhost/api/daily-content/today", {
@@ -301,7 +393,8 @@ describe("api routes", () => {
     );
     const todayPayload = await todayResponse.json();
     expect(todayResponse.status).toBe(200);
-    expect(todayPayload.data.dailyAdvice.title).toContain("上海");
+    expect(todayPayload.data.dailyAdvice.source).toBe("ai");
+    expect(todayPayload.data.dailyAdvice.title).toContain("岗位");
 
     const postgraduateResponse = await getPostgraduateAdvice(
       new Request("http://localhost/api/postgraduate/advice", {

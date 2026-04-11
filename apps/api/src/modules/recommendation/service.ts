@@ -1,6 +1,7 @@
 import type { CaseRepository } from "@/modules/cases/repository";
 import type { DailyContentService } from "@/modules/daily-content/service";
 import type { EventRepository } from "@/modules/events/repository";
+import type { AiServiceRequestContext } from "@/integrations/ai-service/client";
 import type { JobRepository } from "@/modules/jobs/repository";
 import type { ProfileRepository } from "@/modules/profile/repository";
 import type { HomeRecommendation } from "@/modules/recommendation/schema";
@@ -8,7 +9,7 @@ import type { AiServiceClient } from "@/integrations/ai-service/client";
 import { buildHomeRecommendations } from "@/workflows/recommendation/build-home-recommendations";
 
 export interface RecommendationService {
-  getHomeRecommendations(userId: string): Promise<HomeRecommendation>;
+  getHomeRecommendations(userId: string, context?: AiServiceRequestContext): Promise<HomeRecommendation>;
 }
 
 export function createRecommendationService(
@@ -20,7 +21,7 @@ export function createRecommendationService(
   aiService: AiServiceClient,
 ): RecommendationService {
   return {
-    getHomeRecommendations(userId) {
+    getHomeRecommendations(userId, context) {
       return buildHomeRecommendations(userId, {
         profileRepository,
         jobRepository,
@@ -28,7 +29,7 @@ export function createRecommendationService(
         eventRepository,
         dailyContentService,
         aiService,
-      });
+      }, context);
     },
   };
 }

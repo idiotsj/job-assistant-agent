@@ -529,8 +529,21 @@ export function createTestAppContext(
         options.aiService ??
         ({
           enabled: false,
+          async generateDailyAdvice() {
+            throw new Error("AI service disabled in test context");
+          },
           async scoreJobs() {
-            return [];
+            return {
+              items: [],
+              meta: {
+                provider: "disabled",
+                model: "disabled",
+                promptVersion: "none",
+                latencyMs: 0,
+                fallbackUsed: true,
+                tokenUsage: null,
+              },
+            };
           },
           async parseResume() {
             throw new Error("AI service disabled in test context");
