@@ -548,6 +548,9 @@ export function createTestAppContext(
           async parseResume() {
             throw new Error("AI service disabled in test context");
           },
+          async diagnoseResume() {
+            throw new Error("AI service disabled in test context");
+          },
         } satisfies AiServiceClient),
     }),
   };

@@ -22,6 +22,7 @@ class Settings(BaseModel):
     openai_api_key: str | None = None
     openai_base_url: str
     openai_model_resume_parse: str
+    openai_model_resume_diagnosis: str
     openai_model_job_scoring: str
     openai_model_daily_advice: str
 
@@ -43,6 +44,7 @@ def get_settings() -> Settings:
         openai_api_key=_clean_env("OPENAI_API_KEY"),
         openai_base_url=_clean_env("OPENAI_BASE_URL") or "https://api.openai.com/v1",
         openai_model_resume_parse=_clean_env("OPENAI_MODEL_RESUME_PARSE") or "gpt-4.1-mini",
+        openai_model_resume_diagnosis=_clean_env("OPENAI_MODEL_RESUME_DIAGNOSIS") or "gpt-4.1-mini",
         openai_model_job_scoring=_clean_env("OPENAI_MODEL_JOB_SCORING") or "gpt-4.1-mini",
         openai_model_daily_advice=_clean_env("OPENAI_MODEL_DAILY_ADVICE") or "gpt-4.1-mini",
     )

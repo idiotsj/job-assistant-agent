@@ -55,7 +55,43 @@ export const profileResumeParseInputSchema = z.object({
   fileName: z.string().nullable().optional(),
 });
 
+export const resumeDiagnosisQualitySchema = z.object({
+  strengths: z.array(z.string()).default([]),
+  risks: z.array(z.string()).default([]),
+  missingInfo: z.array(z.string()).default([]),
+});
+
+export const resumeDiagnosisAlignmentSchema = z.object({
+  targetSummary: z.string(),
+  matchedSignals: z.array(z.string()).default([]),
+  gapSignals: z.array(z.string()).default([]),
+});
+
+export const resumeDiagnosisActionPlanSchema = z.object({
+  topPriority: z.string(),
+  nextSteps: z.array(z.string()).default([]),
+});
+
+export const resumeDiagnosisSchema = z.object({
+  version: z.string(),
+  generatedAt: z.string(),
+  overallScore: z.number().int().min(0).max(100),
+  summary: z.string(),
+  quality: resumeDiagnosisQualitySchema,
+  alignment: resumeDiagnosisAlignmentSchema,
+  actionPlan: resumeDiagnosisActionPlanSchema,
+});
+
 export const profileResumeParseResultSchema = z.object({
+  parsed: parsedResumeSchema,
+  appliedPatch: profilePatchSchema,
+  profile: userProfileSchema,
+});
+
+export const profileResumeDiagnoseInputSchema = profileResumeParseInputSchema;
+
+export const profileResumeDiagnoseResultSchema = z.object({
+  diagnosis: resumeDiagnosisSchema,
   parsed: parsedResumeSchema,
   appliedPatch: profilePatchSchema,
   profile: userProfileSchema,
@@ -67,3 +103,9 @@ export type ProfilePatch = z.infer<typeof profilePatchSchema>;
 export type ParsedResume = z.infer<typeof parsedResumeSchema>;
 export type ProfileResumeParseInput = z.infer<typeof profileResumeParseInputSchema>;
 export type ProfileResumeParseResult = z.infer<typeof profileResumeParseResultSchema>;
+export type ResumeDiagnosisQuality = z.infer<typeof resumeDiagnosisQualitySchema>;
+export type ResumeDiagnosisAlignment = z.infer<typeof resumeDiagnosisAlignmentSchema>;
+export type ResumeDiagnosisActionPlan = z.infer<typeof resumeDiagnosisActionPlanSchema>;
+export type ResumeDiagnosis = z.infer<typeof resumeDiagnosisSchema>;
+export type ProfileResumeDiagnoseInput = z.infer<typeof profileResumeDiagnoseInputSchema>;
+export type ProfileResumeDiagnoseResult = z.infer<typeof profileResumeDiagnoseResultSchema>;

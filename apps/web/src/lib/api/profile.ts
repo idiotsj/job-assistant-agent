@@ -1,4 +1,6 @@
 import {
+  profileResumeDiagnoseInputSchema,
+  profileResumeDiagnoseResultSchema,
   profileResumeParseInputSchema,
   profileResumeParseResultSchema,
   profileUpdateSchema,
@@ -10,6 +12,7 @@ import { apiGet, apiPost, apiPut } from "./client";
 
 const profileResponseSchema = createSuccessResponseSchema(userProfileSchema);
 const profileResumeParseResponseSchema = createSuccessResponseSchema(profileResumeParseResultSchema);
+const profileResumeDiagnoseResponseSchema = createSuccessResponseSchema(profileResumeDiagnoseResultSchema);
 
 export async function getProfile() {
   const response = await apiGet("/api/profile", profileResponseSchema);
@@ -25,5 +28,11 @@ export async function updateProfile(input: unknown) {
 export async function parseProfileResume(input: unknown) {
   const payload = profileResumeParseInputSchema.parse(input);
   const response = await apiPost("/api/profile/resume/parse", payload, profileResumeParseResponseSchema);
+  return response.data;
+}
+
+export async function diagnoseProfileResume(input: unknown) {
+  const payload = profileResumeDiagnoseInputSchema.parse(input);
+  const response = await apiPost("/api/profile/resume/diagnose", payload, profileResumeDiagnoseResponseSchema);
   return response.data;
 }

@@ -13,6 +13,7 @@ import { GET as getEvents } from "@/routes/events/route";
 import { GET as getJobs } from "@/routes/jobs/route";
 import { GET as getPostgraduateAdvice } from "@/routes/postgraduate/advice/route";
 import { GET as getProfile, PUT as putProfile } from "@/routes/profile/route";
+import { POST as postProfileResumeDiagnose } from "@/routes/profile/resume/diagnose/route";
 import { POST as postProfileResumeParse } from "@/routes/profile/resume/parse/route";
 import { GET as getRecommendHome } from "@/routes/recommend/home/route";
 import { DELETE as deleteScheduleItem, PUT as putScheduleItem } from "@/routes/schedule/[id]/route";
@@ -201,6 +202,38 @@ describe("api routes", () => {
                 },
               };
             },
+            async diagnoseResume() {
+              return {
+                diagnosis: {
+                  version: "v1",
+                  generatedAt: new Date("2026-04-13T10:00:00.000Z").toISOString(),
+                  overallScore: 84,
+                  summary: "简历基础不错，优先补项目成果和目标岗位表达。",
+                  quality: {
+                    strengths: ["技能关键词已经比较集中。"],
+                    risks: ["缺少量化结果。"],
+                    missingInfo: ["项目经历"],
+                  },
+                  alignment: {
+                    targetSummary: "目标岗位偏向 前端开发；优先城市是 上海",
+                    matchedSignals: ["简历表达出的岗位方向与画像目标有交集：前端开发。"],
+                    gapSignals: [],
+                  },
+                  actionPlan: {
+                    topPriority: "先补一段和前端方向最相关的项目成果。",
+                    nextSteps: ["给核心项目补量化结果。", "把目标岗位关键词提前到前半屏。"],
+                  },
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 22,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
           },
         },
       ),
@@ -229,6 +262,140 @@ describe("api routes", () => {
     expect(capturedContext?.requestId).toBe(response.headers.get("x-request-id"));
     expect(capturedContext?.userId).toBe("user-1");
     expect(capturedContext?.capability).toBe("resume_parse");
+  });
+
+  it("diagnoses resume, refreshes parsed resume cache, and stores latest diagnosis", async () => {
+    const capturedContexts: Array<{ requestId?: string | null; userId?: string | null; capability?: string | null }> = [];
+    setServerAppContextForTesting(
+      createTestAppContext(
+        {},
+        {
+          aiService: {
+            enabled: true,
+            async generateDailyAdvice() {
+              throw new Error("not needed");
+            },
+            async scoreJobs() {
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 8,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async parseResume(_input, context) {
+              capturedContexts.push(context ?? {});
+              return {
+                parsed: {
+                  summary: "识别到技能和方向",
+                  detectedSkills: ["Python", "React"],
+                  detectedJobTypes: ["前端开发"],
+                  detectedCities: ["上海"],
+                  education: {
+                    university: "同济大学",
+                    major: "计算机科学",
+                  },
+                  confidence: 0.86,
+                },
+                patch: {
+                  skills: ["Python", "React"],
+                  preferredJobTypes: ["前端开发"],
+                  targetCities: ["上海"],
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 19,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async diagnoseResume(_input, context) {
+              capturedContexts.push(context ?? {});
+              return {
+                diagnosis: {
+                  version: "v1",
+                  generatedAt: new Date("2026-04-13T12:00:00.000Z").toISOString(),
+                  overallScore: 83,
+                  summary: "简历有基础，优先补项目成果和量化证据。",
+                  quality: {
+                    strengths: ["技能关键词清晰。"],
+                    risks: ["缺少量化结果。"],
+                    missingInfo: ["项目经历"],
+                  },
+                  alignment: {
+                    targetSummary: "目标岗位偏向 前端开发；优先城市是 上海",
+                    matchedSignals: ["简历表达出的岗位方向与画像目标有交集：前端开发。"],
+                    gapSignals: [],
+                  },
+                  actionPlan: {
+                    topPriority: "先补一段能证明前端能力的项目成果。",
+                    nextSteps: ["补 1 到 2 个量化结果。", "把项目关键词前置。"],
+                  },
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 21,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+          },
+        },
+      ),
+    );
+
+    const response = await postProfileResumeDiagnose(
+      new Request("http://localhost/api/profile/resume/diagnose", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "同济大学计算机科学专业，熟悉 Python、React，希望在上海从事前端开发。",
+          fileName: "resume.txt",
+        }),
+      }),
+    );
+
+    const payload = await response.json();
+    expect(response.status).toBe(200);
+    expect(payload.data.diagnosis.overallScore).toBe(83);
+    expect(payload.data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
+    expect(payload.data.profile.resumeData.resumeDiagnosis.latest.summary).toContain("项目成果");
+    expect(capturedContexts[0]?.capability).toBe("resume_parse");
+    expect(capturedContexts[1]?.capability).toBe("resume_diagnosis");
+    expect(capturedContexts[1]?.requestId).toBe(response.headers.get("x-request-id"));
+  });
+
+  it("returns 503 when resume diagnosis service is unavailable", async () => {
+    setServerAppContextForTesting(createTestAppContext());
+
+    const response = await postProfileResumeDiagnose(
+      new Request("http://localhost/api/profile/resume/diagnose", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "一份简历文本",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(503);
   });
 
   it("rejects invalid profile updates", async () => {
@@ -379,6 +546,9 @@ describe("api routes", () => {
               };
             },
             async parseResume() {
+              throw new Error("not needed");
+            },
+            async diagnoseResume() {
               throw new Error("not needed");
             },
           },

@@ -19,6 +19,7 @@ import { GET as getJobs } from "@/routes/jobs/route";
 import { GET as getJob } from "@/routes/jobs/[id]/route";
 import { GET as getPostgraduateAdvice } from "@/routes/postgraduate/advice/route";
 import { GET as getProfile, PUT as putProfile } from "@/routes/profile/route";
+import { POST as postProfileResumeDiagnose } from "@/routes/profile/resume/diagnose/route";
 import { POST as postProfileResumeParse } from "@/routes/profile/resume/parse/route";
 import { GET as getRecommendHome } from "@/routes/recommend/home/route";
 import { DELETE as deleteScheduleItem, PUT as putScheduleItem } from "@/routes/schedule/[id]/route";
@@ -203,6 +204,7 @@ export async function registerApiRoutes(app: FastifyInstance) {
   registerWebRoute(app, "GET", "/api/profile", getProfile);
   registerWebRoute(app, "PUT", "/api/profile", putProfile);
   registerWebRoute(app, "POST", "/api/profile/resume/parse", postProfileResumeParse);
+  registerWebRoute(app, "POST", "/api/profile/resume/diagnose", postProfileResumeDiagnose);
   registerWebRoute(app, "GET", "/api/recommend/home", getRecommendHome);
   registerWebRoute(app, "GET", "/api/jobs", getJobs);
   registerWebRoute(app, "GET", "/api/jobs/:id", getJob);

@@ -1,10 +1,14 @@
 import asyncio
 
+import pytest
+
 from app.core.config import Settings
 from app.dependencies import AiServiceRuntime
 from app.pipelines import PipelineContext
 from app.pipelines.daily_advice import run_daily_advice_pipeline
 from app.pipelines.job_scoring import JobScoreEnhancementResponse, run_job_scoring_pipeline
+from app.pipelines import resume_diagnosis as resume_diagnosis_pipeline
+from app.pipelines.resume_diagnosis import run_resume_diagnosis_pipeline
 from app.pipelines.resume_parse import run_resume_parse_pipeline
 from app.providers import (
     ProviderExecutionError,
@@ -15,6 +19,7 @@ from app.repositories import InMemoryAiRunLogRepository
 from app.schemas.daily_advice import DailyAdviceRequest, DailyAdviceResult
 from app.schemas.recommendation import JobScoringRequest
 from app.schemas.resume import ResumeParseRequest, ResumeParseResponseData
+from app.schemas.resume_diagnosis import ResumeDiagnosisRequest, ResumeDiagnosisResult
 
 
 class SuccessProvider:
@@ -48,6 +53,7 @@ def build_runtime(
             openai_api_key="test-key",
             openai_base_url="https://example.com/v1",
             openai_model_resume_parse="gpt-test-resume",
+            openai_model_resume_diagnosis="gpt-test-diagnosis",
             openai_model_job_scoring="gpt-test-jobs",
             openai_model_daily_advice="gpt-test-daily",
         ),
@@ -195,6 +201,7 @@ def test_job_scoring_pipeline_merges_provider_enhancement() -> None:
     assert any(item.jobId == "job-2" and item.reason == "项目经历更相关" for item in result.data.items)
     assert repository.entries[0].input_json["preview"]["jobs"]["type"] == "list"
 
+
 def test_job_scoring_pipeline_falls_back_and_keeps_minimal_logs() -> None:
     repository = InMemoryAiRunLogRepository(log_mode="minimal")
     runtime = build_runtime(FailingProvider(), repository)
@@ -232,6 +239,151 @@ def test_job_scoring_pipeline_falls_back_and_keeps_minimal_logs() -> None:
     assert result.meta.provider == "rule-based"
     assert result.meta.fallbackUsed is True
     assert repository.entries[0].output_json["type"] == "object"
+
+
+def test_resume_diagnosis_pipeline_uses_provider_result_and_logs_full_payload() -> None:
+    repository = InMemoryAiRunLogRepository(log_mode="full")
+    runtime = build_runtime(
+        SuccessProvider(
+            {
+                "resume_diagnosis": ResumeDiagnosisResult.model_validate(
+                    {
+                        "version": "v1",
+                        "generatedAt": "2026-04-13T10:00:00.000Z",
+                        "overallScore": 86,
+                        "summary": "简历基础较好，优先补量化结果和项目证据。",
+                        "quality": {
+                            "strengths": ["技能关键词比较集中。"],
+                            "risks": ["缺少量化成果。"],
+                            "missingInfo": ["项目经历"],
+                        },
+                        "alignment": {
+                            "targetSummary": "目标岗位偏向 前端开发；优先城市是 上海",
+                            "matchedSignals": ["简历表达出的岗位方向与画像目标有交集：前端开发。"],
+                            "gapSignals": [],
+                        },
+                        "actionPlan": {
+                            "topPriority": "先补一段最能证明前端能力的项目成果。",
+                            "nextSteps": ["补 1 到 2 个量化结果。", "把目标岗位关键词前置。"],
+                        },
+                    }
+                )
+            }
+        ),
+        repository,
+    )
+
+    result = asyncio.run(
+        run_resume_diagnosis_pipeline(
+            ResumeDiagnosisRequest.model_validate(
+                {
+                    "rawText": "同济大学计算机科学专业，熟悉 Python、React，希望在上海从事前端开发。",
+                    "parsedResume": {
+                        "summary": "识别到技能和方向",
+                        "detectedSkills": ["Python", "React"],
+                        "detectedJobTypes": ["前端开发"],
+                        "detectedCities": ["上海"],
+                        "education": {
+                            "university": "同济大学",
+                            "major": "计算机科学",
+                        },
+                        "confidence": 0.9,
+                    },
+                    "profile": {
+                        "userId": "user-1",
+                        "targetCities": ["上海"],
+                        "preferredJobTypes": ["前端开发"],
+                        "skills": ["Python", "React"],
+                    },
+                }
+            ),
+            runtime,
+            PipelineContext(request_id="req-diagnosis-1", user_id="user-1"),
+        )
+    )
+
+    assert result.data.overallScore == 86
+    assert result.meta.provider == "openai"
+    assert result.meta.fallbackUsed is False
+    assert repository.entries[0].capability == "resume_diagnosis"
+    assert repository.entries[0].input_json["rawText"].startswith("同济大学")
+
+
+def test_resume_diagnosis_pipeline_falls_back_when_provider_fails() -> None:
+    repository = InMemoryAiRunLogRepository(log_mode="minimal")
+    runtime = build_runtime(FailingProvider(), repository)
+
+    result = asyncio.run(
+        run_resume_diagnosis_pipeline(
+            ResumeDiagnosisRequest.model_validate(
+                {
+                    "rawText": "熟悉 React，希望做前端开发。",
+                    "parsedResume": {
+                        "summary": "识别到前端方向",
+                        "detectedSkills": ["React"],
+                        "detectedJobTypes": ["前端开发"],
+                        "detectedCities": [],
+                        "education": {
+                            "university": None,
+                            "major": None,
+                        },
+                        "confidence": 0.5,
+                    },
+                    "profile": {
+                        "userId": "user-2",
+                        "targetCities": ["上海"],
+                        "preferredJobTypes": ["前端开发"],
+                        "skills": ["React"],
+                    },
+                }
+            ),
+            runtime,
+            PipelineContext(request_id="req-diagnosis-2", user_id="user-2"),
+        )
+    )
+
+    assert result.meta.provider == "rule-based"
+    assert result.meta.fallbackUsed is True
+    assert result.data.quality.risks
+    assert repository.entries[0].error_json["type"] == "object"
+
+
+def test_resume_diagnosis_pipeline_raises_when_prompt_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    repository = InMemoryAiRunLogRepository(log_mode="full")
+    runtime = build_runtime(FailingProvider(), repository)
+
+    def raise_missing_prompt(_capability: str, _version: str) -> str:
+        raise FileNotFoundError("missing prompt")
+
+    monkeypatch.setattr(resume_diagnosis_pipeline, "load_prompt", raise_missing_prompt)
+
+    with pytest.raises(FileNotFoundError):
+        asyncio.run(
+            run_resume_diagnosis_pipeline(
+                ResumeDiagnosisRequest.model_validate(
+                    {
+                        "rawText": "一份简历文本",
+                        "parsedResume": {
+                            "summary": "基础解析结果",
+                            "detectedSkills": [],
+                            "detectedJobTypes": [],
+                            "detectedCities": [],
+                            "education": {
+                                "university": None,
+                                "major": None,
+                            },
+                            "confidence": 0.3,
+                        },
+                        "profile": None,
+                    }
+                ),
+                runtime,
+                PipelineContext(request_id="req-diagnosis-3", user_id="user-3"),
+            )
+        )
+
+    assert repository.entries[0].status == "failed"
+    assert repository.entries[0].error_json["errorType"] == "FileNotFoundError"
 
 
 def test_daily_advice_pipeline_uses_provider_result() -> None:

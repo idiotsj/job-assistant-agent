@@ -7,6 +7,7 @@ from app.pipelines.job_scoring import JobScoreEnhancementResponse
 from app.providers import StructuredProviderRequest, StructuredProviderResponse
 from app.repositories import InMemoryAiRunLogRepository
 from app.schemas.resume import ResumeParseResponseData
+from app.schemas.resume_diagnosis import ResumeDiagnosisResult
 from app.core.config import Settings
 
 
@@ -35,6 +36,7 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
             openai_api_key="test-key",
             openai_base_url="https://example.com/v1",
             openai_model_resume_parse="gpt-test",
+            openai_model_resume_diagnosis="gpt-test",
             openai_model_job_scoring="gpt-test",
             openai_model_daily_advice="gpt-test",
         ),
@@ -72,6 +74,28 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
                                 "signals": ["project_relevance"],
                             }
                         ]
+                    }
+                ),
+                "resume_diagnosis": ResumeDiagnosisResult.model_validate(
+                    {
+                        "version": "v1",
+                        "generatedAt": "2026-04-13T11:00:00.000Z",
+                        "overallScore": 85,
+                        "summary": "简历基础不错，优先补量化成果和项目证据。",
+                        "quality": {
+                            "strengths": ["技能关键词比较集中。"],
+                            "risks": ["缺少量化结果。"],
+                            "missingInfo": ["项目经历"],
+                        },
+                        "alignment": {
+                            "targetSummary": "目标岗位偏向 前端开发；优先城市是 上海",
+                            "matchedSignals": ["简历表达出的岗位方向与画像目标有交集：前端开发。"],
+                            "gapSignals": [],
+                        },
+                        "actionPlan": {
+                            "topPriority": "先补一段能证明前端方向的项目成果。",
+                            "nextSteps": ["给项目补充量化结果。", "把关键词提前。"],
+                        },
                     }
                 ),
                 "daily_advice": DailyAdviceResult.model_validate(
@@ -165,6 +189,47 @@ def test_score_jobs_route_returns_ranked_items_with_meta() -> None:
     assert payload["data"]["items"][0]["score"] > 0
     assert payload["meta"]["provider"] == "openai"
     assert repository.entries[-1].request_id == "req-route-2"
+
+
+def test_resume_diagnose_route_returns_structured_diagnosis_with_meta() -> None:
+    client, repository = build_test_client()
+    response = client.post(
+        "/internal/resume/diagnose",
+        headers={
+            "x-request-id": "req-route-4",
+            "x-ai-user-id": "user-4",
+        },
+        json={
+            "rawText": "同济大学计算机科学专业，熟悉 Python、React，希望在上海从事前端开发。",
+            "parsedResume": {
+                "summary": "识别到前端求职倾向",
+                "detectedSkills": ["Python", "React"],
+                "detectedJobTypes": ["前端开发"],
+                "detectedCities": ["上海"],
+                "education": {
+                    "university": "同济大学",
+                    "major": "计算机科学",
+                },
+                "confidence": 0.9,
+            },
+            "profile": {
+                "userId": "user-4",
+                "targetIndustries": ["互联网"],
+                "targetCities": ["上海"],
+                "skills": ["Python", "React"],
+                "preferredJobTypes": ["前端开发"],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["data"]["overallScore"] == 85
+    assert payload["data"]["actionPlan"]["topPriority"].startswith("先补一段")
+    assert payload["meta"]["provider"] == "openai"
+    assert repository.entries[-1].capability == "resume_diagnosis"
+    assert repository.entries[-1].request_id == "req-route-4"
 
 
 def test_daily_advice_route_returns_generated_advice_with_meta() -> None:

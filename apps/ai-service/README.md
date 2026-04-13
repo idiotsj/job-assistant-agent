@@ -33,6 +33,24 @@
 - `latencyMs`
 - `fallbackUsed`
 
+### `POST /internal/resume/diagnose`
+
+输入简历原文、最新解析结果和当前画像，输出：
+
+- `data.overallScore`
+- `data.summary`
+- `data.quality`
+- `data.alignment`
+- `data.actionPlan`
+- `meta`
+
+当前策略是：
+
+- `apps/api` 先调用 `resume_parse`
+- 再把 `rawText + parsedResume + profile` 交给 `resume_diagnosis`
+- provider 不可用时自动 fallback 到规则版诊断
+- 每次调用都会写 `ai_run_logs`，capability 固定为 `resume_diagnosis`
+
 ### `POST /internal/recommend/score-jobs`
 
 输入用户画像和岗位候选集，输出岗位打分列表与 `meta`。
@@ -58,6 +76,7 @@
 - `OPENAI_API_KEY`
 - `OPENAI_BASE_URL`
 - `OPENAI_MODEL_RESUME_PARSE`
+- `OPENAI_MODEL_RESUME_DIAGNOSIS`
 - `OPENAI_MODEL_JOB_SCORING`
 - `OPENAI_MODEL_DAILY_ADVICE`
 

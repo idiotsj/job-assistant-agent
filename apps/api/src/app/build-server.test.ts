@@ -67,7 +67,7 @@ describe("api server integration", () => {
     }
   });
 
-  it("allows authenticated users to call resume parse endpoint through cookie session", async () => {
+  it("allows authenticated users to call resume parse and diagnose endpoints through cookie session", async () => {
     setServerAppContextForTesting(
       createTestAppContext(
         {},
@@ -134,6 +134,38 @@ describe("api server integration", () => {
                 },
               };
             },
+            async diagnoseResume() {
+              return {
+                diagnosis: {
+                  version: "v1",
+                  generatedAt: new Date().toISOString(),
+                  overallScore: 81,
+                  summary: "简历基础可用，下一步重点是补强结果证据。",
+                  quality: {
+                    strengths: ["技能关键词较明确。"],
+                    risks: ["缺少量化成果。"],
+                    missingInfo: ["项目经历"],
+                  },
+                  alignment: {
+                    targetSummary: "目标岗位偏向 前端开发；优先城市是 上海",
+                    matchedSignals: ["简历表达出的岗位方向与画像目标有交集：前端开发。"],
+                    gapSignals: [],
+                  },
+                  actionPlan: {
+                    topPriority: "先补一段能支撑前端方向的项目成果。",
+                    nextSteps: ["给项目补上可量化结果。"],
+                  },
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 19,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
           },
         },
       ),
@@ -167,6 +199,21 @@ describe("api server integration", () => {
 
       expect(parseResponse.statusCode).toBe(200);
       expect(parseResponse.json().data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
+
+      const diagnoseResponse = await server.inject({
+        method: "POST",
+        url: "/api/profile/resume/diagnose",
+        headers: {
+          cookie: cookieHeader,
+        },
+        payload: {
+          rawText: "同济大学计算机科学专业，熟悉 Python，目标前端开发。",
+          fileName: "resume.txt",
+        },
+      });
+
+      expect(diagnoseResponse.statusCode).toBe(200);
+      expect(diagnoseResponse.json().data.profile.resumeData.resumeDiagnosis.latest.overallScore).toBe(81);
     } finally {
       await server.close();
     }

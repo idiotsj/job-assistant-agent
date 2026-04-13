@@ -129,6 +129,7 @@
 - `GET /api/profile`
 - `PUT /api/profile`
 - `POST /api/profile/resume/parse`
+- `POST /api/profile/resume/diagnose`
 - `GET /api/recommend/home`
 - `GET /api/jobs`
 - `GET /api/jobs/:id`
@@ -178,6 +179,44 @@
 - 会在 `preferredJobTypes` 为空时补入识别出的岗位方向
 - 不会自动覆盖已有的目标城市、目标行业等关键偏好
 
+### `POST /api/profile/resume/diagnose`
+
+- 说明：执行一次“先解析、再诊断”的同步简历诊断流程，并把最新结构化结果和诊断缓存回当前画像
+- 鉴权：需要
+
+请求体：
+
+```json
+{
+  "rawText": "同济大学计算机科学专业，熟悉 Python、React，希望在上海从事前端开发。",
+  "fileName": "resume.txt"
+}
+```
+
+响应中的 `data` 包含：
+
+- `diagnosis`：最新通用诊断结果
+- `parsed`：这次诊断前置使用的最新结构化解析结果
+- `appliedPatch`：本次根据简历安全写回的保守画像补丁
+- `profile`：写回后的最新画像
+
+诊断结果按三层组织：
+
+- `quality`：简历本身的质量判断
+- `alignment`：与当前画像目标的对齐情况
+- `actionPlan`：下一步最该立即执行的动作
+
+缓存写回规则：
+
+- `profile.resumeData.parsedResume` 会刷新为本次最新解析结果
+- `profile.resumeData.resumeDiagnosis.latest` 会覆盖为本次最新诊断
+- 第一版不保留诊断历史列表
+
+可用性约定：
+
+- 如果 `apps/api` 无法连接 `apps/ai-service`，接口返回 `503`
+- 如果 `apps/ai-service` 可达但上游 provider 失败，内部 pipeline 会回退到规则版诊断，公共接口仍返回可用结果
+
 ## 3.1 内部 AI 服务协作
 
 当前仓库新增了内部 Python 服务：
@@ -188,6 +227,7 @@
 
 - 岗位候选打分：`POST /internal/recommend/score-jobs`
 - 简历结构化解析：`POST /internal/resume/parse`
+- 通用简历诊断：`POST /internal/resume/diagnose`
 
 说明：
 

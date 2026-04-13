@@ -3,10 +3,13 @@ import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai
 import { type ProfileRepository } from "@/modules/profile/repository";
 import {
   type ParsedResume,
+  type ProfileResumeDiagnoseInput,
+  type ProfileResumeDiagnoseResult,
   type ProfilePatch,
   type ProfileResumeParseInput,
   type ProfileResumeParseResult,
   type ProfileUpdateInput,
+  type ResumeDiagnosis,
   type UserProfile,
 } from "@/modules/profile/schema";
 
@@ -18,6 +21,11 @@ export interface ProfileService {
     input: ProfileResumeParseInput,
     context?: AiServiceRequestContext,
   ): Promise<ProfileResumeParseResult>;
+  diagnoseResume(
+    userId: string,
+    input: ProfileResumeDiagnoseInput,
+    context?: AiServiceRequestContext,
+  ): Promise<ProfileResumeDiagnoseResult>;
 }
 
 function getEmptyProfile(userId: string): UserProfile {
@@ -40,6 +48,14 @@ function mergeUnique(values: string[]) {
   return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
 }
 
+function buildParsedResumeSnapshot(parsed: ParsedResume, fileName?: string | null) {
+  return {
+    ...parsed,
+    fileName: fileName ?? null,
+    parsedAt: new Date().toISOString(),
+  };
+}
+
 function buildResumePatch(
   current: UserProfile,
   parsed: ParsedResume,
@@ -52,11 +68,7 @@ function buildResumePatch(
   const patch: ProfilePatch = {
     resumeData: {
       ...(current.resumeData ?? {}),
-      parsedResume: {
-        ...parsed,
-        fileName: fileName ?? null,
-        parsedAt: new Date().toISOString(),
-      },
+      parsedResume: buildParsedResumeSnapshot(parsed, fileName),
     },
   };
 
@@ -82,6 +94,64 @@ function buildResumePatch(
   }
 
   return patch;
+}
+
+interface ResumeParseArtifacts {
+  parsed: ParsedResume;
+  suggestedPatch: ProfilePatch | null;
+  appliedPatch: ProfilePatch;
+  nextProfileDraft: UserProfile;
+}
+
+async function resolveResumeParseArtifacts(
+  aiService: AiServiceClient,
+  current: UserProfile,
+  userId: string,
+  input: ProfileResumeParseInput,
+  context: AiServiceRequestContext,
+): Promise<ResumeParseArtifacts> {
+  let parsed: ParsedResume;
+  let suggestedPatch: ProfilePatch | null = null;
+  try {
+    const aiResult = await aiService.parseResume(input, {
+      ...context,
+      userId,
+      capability: context.capability ?? "resume_parse",
+    });
+    parsed = aiResult.parsed;
+    suggestedPatch = aiResult.patch;
+  } catch (error) {
+    throw new AppError("Resume parsing failed", {
+      code: "AI_SERVICE_UNAVAILABLE",
+      status: 503,
+      details: {
+        cause: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+
+  const appliedPatch = buildResumePatch(current, parsed, suggestedPatch, input.fileName ?? null);
+  return {
+    parsed,
+    suggestedPatch,
+    appliedPatch,
+    nextProfileDraft: {
+      ...current,
+      ...appliedPatch,
+    },
+  };
+}
+
+function applyLatestResumeDiagnosis(profile: UserProfile, diagnosis: ResumeDiagnosis): UserProfile {
+  return {
+    ...profile,
+    resumeData: {
+      ...(profile.resumeData ?? {}),
+      resumeDiagnosis: {
+        latest: diagnosis,
+      },
+    },
+  };
 }
 
 export function createProfileService(repository: ProfileRepository, aiService: AiServiceClient): ProfileService {
@@ -111,18 +181,57 @@ export function createProfileService(repository: ProfileRepository, aiService: A
         });
       }
 
-      let parsed: ParsedResume;
-      let suggestedPatch: ProfilePatch | null = null;
-      try {
-        const aiResult = await aiService.parseResume(input, {
-          ...context,
-          userId,
-          capability: context.capability ?? "resume_parse",
+      const { parsed, appliedPatch, nextProfileDraft } = await resolveResumeParseArtifacts(
+        aiService,
+        current,
+        userId,
+        input,
+        context,
+      );
+      const profile = await repository.upsert(userId, nextProfileDraft);
+
+      return {
+        parsed,
+        appliedPatch,
+        profile,
+      };
+    },
+
+    async diagnoseResume(userId, input, context = {}) {
+      const current = (await repository.getByUserId(userId)) ?? getEmptyProfile(userId);
+
+      if (!aiService.enabled) {
+        throw new AppError("Resume diagnosis is temporarily unavailable", {
+          code: "AI_SERVICE_UNAVAILABLE",
+          status: 503,
         });
-        parsed = aiResult.parsed;
-        suggestedPatch = aiResult.patch;
+      }
+
+      const { parsed, appliedPatch, nextProfileDraft } = await resolveResumeParseArtifacts(
+        aiService,
+        current,
+        userId,
+        input,
+        context,
+      );
+
+      let diagnosis: ResumeDiagnosis;
+      try {
+        const aiResult = await aiService.diagnoseResume(
+          {
+            rawText: input.rawText,
+            parsedResume: parsed,
+            profile: nextProfileDraft,
+          },
+          {
+            ...context,
+            userId,
+            capability: "resume_diagnosis",
+          },
+        );
+        diagnosis = aiResult.diagnosis;
       } catch (error) {
-        throw new AppError("Resume parsing failed", {
+        throw new AppError("Resume diagnosis is temporarily unavailable", {
           code: "AI_SERVICE_UNAVAILABLE",
           status: 503,
           details: {
@@ -131,13 +240,11 @@ export function createProfileService(repository: ProfileRepository, aiService: A
         });
       }
 
-      const appliedPatch = buildResumePatch(current, parsed, suggestedPatch, input.fileName ?? null);
-      const profile = await repository.upsert(userId, {
-        ...current,
-        ...appliedPatch,
-      });
+      const nextProfile = applyLatestResumeDiagnosis(nextProfileDraft, diagnosis);
+      const profile = await repository.upsert(userId, nextProfile);
 
       return {
+        diagnosis,
         parsed,
         appliedPatch,
         profile,

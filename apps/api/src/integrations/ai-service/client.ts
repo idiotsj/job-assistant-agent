@@ -5,11 +5,15 @@ import {
   aiDailyAdviceResponseSchema,
   aiJobScoringRequestSchema,
   aiJobScoringResponseSchema,
+  aiResumeDiagnosisRequestSchema,
+  aiResumeDiagnosisResponseSchema,
   aiResumeParseRequestSchema,
   aiResumeParseResponseSchema,
   type AiDailyAdviceRequest,
   type AiJobScore,
   type AiPipelineMeta,
+  type AiResumeDiagnosisData,
+  type AiResumeDiagnosisRequest,
   type AiResumeParseData,
   type AiResumeParseRequest,
 } from "@/integrations/ai-service/schemas";
@@ -36,11 +40,17 @@ export interface AiResumeParseResult {
   meta: AiPipelineMeta;
 }
 
+export interface AiResumeDiagnosisResult {
+  diagnosis: AiResumeDiagnosisData;
+  meta: AiPipelineMeta;
+}
+
 export interface AiServiceClient {
   enabled: boolean;
   generateDailyAdvice(input: AiDailyAdviceRequest, context?: AiServiceRequestContext): Promise<AiDailyAdviceResult>;
   scoreJobs(input: unknown, context?: AiServiceRequestContext): Promise<AiJobScoringResult>;
   parseResume(input: AiResumeParseRequest, context?: AiServiceRequestContext): Promise<AiResumeParseResult>;
+  diagnoseResume(input: AiResumeDiagnosisRequest, context?: AiServiceRequestContext): Promise<AiResumeDiagnosisResult>;
 }
 
 class DisabledAiServiceClient implements AiServiceClient {
@@ -65,6 +75,10 @@ class DisabledAiServiceClient implements AiServiceClient {
   }
 
   async parseResume(_input: AiResumeParseRequest): Promise<AiResumeParseResult> {
+    throw new Error("AI service is disabled");
+  }
+
+  async diagnoseResume(_input: AiResumeDiagnosisRequest): Promise<AiResumeDiagnosisResult> {
     throw new Error("AI service is disabled");
   }
 }
@@ -104,6 +118,16 @@ class HttpAiServiceClient implements AiServiceClient {
     return {
       parsed: parsed.data.parsed,
       patch: parsed.data.patch,
+      meta: parsed.meta,
+    };
+  }
+
+  async diagnoseResume(input: AiResumeDiagnosisRequest, context?: AiServiceRequestContext): Promise<AiResumeDiagnosisResult> {
+    const payload = aiResumeDiagnosisRequestSchema.parse(input);
+    const response = await this.request("/internal/resume/diagnose", payload, context);
+    const parsed = aiResumeDiagnosisResponseSchema.parse(response);
+    return {
+      diagnosis: parsed.data,
       meta: parsed.meta,
     };
   }

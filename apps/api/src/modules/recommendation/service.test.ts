@@ -119,6 +119,9 @@ describe("recommendation service", () => {
       async parseResume() {
         throw new Error("not implemented in test");
       },
+      async diagnoseResume() {
+        throw new Error("not implemented in test");
+      },
     };
 
     const context = createTestAppContext({}, { aiService });
@@ -140,6 +143,9 @@ describe("recommendation service", () => {
         throw new Error("ai unavailable");
       },
       async parseResume() {
+        throw new Error("not implemented in test");
+      },
+      async diagnoseResume() {
         throw new Error("not implemented in test");
       },
     };

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { companySchema } from "@/modules/companies/schema";
 import { dailyAdviceSchema } from "@/modules/daily-content/schema";
 import { jobSchema } from "@/modules/jobs/schema";
-import { parsedResumeSchema, profilePatchSchema, userProfileSchema } from "@/modules/profile/schema";
+import { parsedResumeSchema, profilePatchSchema, resumeDiagnosisSchema, userProfileSchema } from "@/modules/profile/schema";
 
 export const aiJobScoringRequestSchema = z.object({
   profile: userProfileSchema.nullable(),
@@ -48,6 +48,18 @@ export const aiResumeParseResponseSchema = z.object({
   meta: aiPipelineMetaSchema,
 });
 
+export const aiResumeDiagnosisRequestSchema = z.object({
+  rawText: z.string().min(1),
+  parsedResume: parsedResumeSchema,
+  profile: userProfileSchema.nullable(),
+});
+
+export const aiResumeDiagnosisResponseSchema = z.object({
+  success: z.literal(true),
+  data: resumeDiagnosisSchema,
+  meta: aiPipelineMetaSchema,
+});
+
 export const aiDailyAdviceRequestSchema = z.object({
   profile: userProfileSchema.nullable(),
   curatedAdvice: z
@@ -74,3 +86,6 @@ export type AiDailyAdviceResponse = z.infer<typeof aiDailyAdviceResponseSchema>;
 export type AiResumeParseRequest = z.infer<typeof aiResumeParseRequestSchema>;
 export type AiResumeParseData = z.infer<typeof aiResumeParseResponseSchema>["data"];
 export type AiResumeParseResponse = z.infer<typeof aiResumeParseResponseSchema>;
+export type AiResumeDiagnosisRequest = z.infer<typeof aiResumeDiagnosisRequestSchema>;
+export type AiResumeDiagnosisData = z.infer<typeof aiResumeDiagnosisResponseSchema>["data"];
+export type AiResumeDiagnosisResponse = z.infer<typeof aiResumeDiagnosisResponseSchema>;

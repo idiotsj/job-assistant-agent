@@ -47,6 +47,9 @@ describe("daily content service", () => {
           async parseResume() {
             throw new Error("not needed");
           },
+          async diagnoseResume() {
+            throw new Error("not needed");
+          },
         },
       },
     );
@@ -85,6 +88,9 @@ describe("daily content service", () => {
             };
           },
           async parseResume() {
+            throw new Error("not needed");
+          },
+          async diagnoseResume() {
             throw new Error("not needed");
           },
         },
