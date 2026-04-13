@@ -1,5 +1,5 @@
 import { logger } from "@/core/logger";
-import { getAiServiceTimeoutMs, getAiServiceUrl } from "@/integrations/ai-service/config";
+import { getAiInternalServiceToken, getAiServiceTimeoutMs, getAiServiceUrl } from "@/integrations/ai-service/config";
 import {
   aiDailyAdviceRequestSchema,
   aiDailyAdviceResponseSchema,
@@ -89,6 +89,7 @@ class HttpAiServiceClient implements AiServiceClient {
   constructor(
     private readonly baseUrl: string,
     private readonly timeoutMs: number,
+    private readonly internalServiceToken: string,
   ) {}
 
   async generateDailyAdvice(input: AiDailyAdviceRequest, context?: AiServiceRequestContext): Promise<AiDailyAdviceResult> {
@@ -137,6 +138,7 @@ class HttpAiServiceClient implements AiServiceClient {
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     const headers: Record<string, string> = {
       "content-type": "application/json",
+      "x-internal-service-token": this.internalServiceToken,
     };
     if (context?.requestId) {
       headers["x-request-id"] = context.requestId;
@@ -175,5 +177,10 @@ export function createAiServiceClient(): AiServiceClient {
     return new DisabledAiServiceClient();
   }
 
-  return new HttpAiServiceClient(url, getAiServiceTimeoutMs());
+  const internalServiceToken = getAiInternalServiceToken();
+  if (!internalServiceToken) {
+    throw new Error("AI internal service token resolution failed");
+  }
+
+  return new HttpAiServiceClient(url, getAiServiceTimeoutMs(), internalServiceToken);
 }

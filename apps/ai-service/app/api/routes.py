@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from app.core.security import require_internal_service_token
 from app.dependencies import get_runtime
 from app.pipelines import (
     PipelineContext,
@@ -33,7 +34,11 @@ def health(request: Request) -> dict:
     }
 
 
-@router.post("/internal/resume/parse", response_model=ResumeParseResponse)
+@router.post(
+    "/internal/resume/parse",
+    response_model=ResumeParseResponse,
+    dependencies=[Depends(require_internal_service_token)],
+)
 async def parse_resume_route(request: Request, payload: ResumeParseRequest) -> ResumeParseResponse:
     runtime = get_runtime(request)
     result = await run_resume_parse_pipeline(
@@ -47,7 +52,11 @@ async def parse_resume_route(request: Request, payload: ResumeParseRequest) -> R
     return ResumeParseResponse(data=result.data, meta=result.meta)
 
 
-@router.post("/internal/resume/diagnose", response_model=ResumeDiagnosisResponse)
+@router.post(
+    "/internal/resume/diagnose",
+    response_model=ResumeDiagnosisResponse,
+    dependencies=[Depends(require_internal_service_token)],
+)
 async def diagnose_resume_route(request: Request, payload: ResumeDiagnosisRequest) -> ResumeDiagnosisResponse:
     runtime = get_runtime(request)
     result = await run_resume_diagnosis_pipeline(
@@ -61,7 +70,11 @@ async def diagnose_resume_route(request: Request, payload: ResumeDiagnosisReques
     return ResumeDiagnosisResponse(data=result.data, meta=result.meta)
 
 
-@router.post("/internal/recommend/score-jobs", response_model=JobScoringResponse)
+@router.post(
+    "/internal/recommend/score-jobs",
+    response_model=JobScoringResponse,
+    dependencies=[Depends(require_internal_service_token)],
+)
 async def score_jobs_route(request: Request, payload: JobScoringRequest) -> JobScoringResponse:
     runtime = get_runtime(request)
     result = await run_job_scoring_pipeline(
@@ -75,7 +88,11 @@ async def score_jobs_route(request: Request, payload: JobScoringRequest) -> JobS
     return JobScoringResponse(data=result.data, meta=result.meta)
 
 
-@router.post("/internal/daily/advice", response_model=DailyAdviceResponse)
+@router.post(
+    "/internal/daily/advice",
+    response_model=DailyAdviceResponse,
+    dependencies=[Depends(require_internal_service_token)],
+)
 async def daily_advice_route(request: Request, payload: DailyAdviceRequest) -> DailyAdviceResponse:
     runtime = get_runtime(request)
     result = await run_daily_advice_pipeline(

@@ -7,6 +7,19 @@ from app.core.db import connect
 
 
 AiRunStatus = Literal["succeeded", "failed"]
+AiLogMode = Literal["full", "minimal", "debug-full"]
+
+SENSITIVE_STRING_KEYS = {
+    "rawText",
+}
+
+SENSITIVE_OBJECT_KEYS = {
+    "profile",
+    "parsedResume",
+    "parsed",
+    "patch",
+    "education",
+}
 
 
 @dataclass(slots=True)
@@ -29,6 +42,70 @@ class AiRunLogEntry:
 
 class AiRunLogRepository(Protocol):
     def write(self, entry: AiRunLogEntry) -> None: ...
+
+
+def summarize_structure(value: Any) -> Any:
+    if value is None:
+        return None
+
+    if isinstance(value, str):
+        return {
+            "type": "string",
+            "length": len(value),
+        }
+
+    if isinstance(value, list):
+        return {
+            "type": "list",
+            "length": len(value),
+        }
+
+    if isinstance(value, dict):
+        return {
+            "type": "object",
+            "keys": list(value.keys())[:20],
+            "size": len(value),
+        }
+
+    return {
+        "type": type(value).__name__,
+    }
+
+
+def _redact_string(value: Any) -> Any:
+    if isinstance(value, str):
+        return {
+            "redacted": True,
+            "type": "string",
+            "length": len(value),
+        }
+
+    return {
+        "redacted": True,
+        "summary": summarize_structure(value),
+    }
+
+
+def sanitize_payload(value: Any, key: str | None = None) -> Any:
+    if key in SENSITIVE_STRING_KEYS:
+        return _redact_string(value)
+
+    if key in SENSITIVE_OBJECT_KEYS:
+        return {
+            "redacted": True,
+            "summary": summarize_structure(value),
+        }
+
+    if isinstance(value, list):
+        return [sanitize_payload(item, key) for item in value]
+
+    if isinstance(value, dict):
+        return {
+            item_key: sanitize_payload(item_value, item_key)
+            for item_key, item_value in value.items()
+        }
+
+    return value
 
 
 def summarize_payload(value: Any) -> Any:
@@ -62,11 +139,15 @@ def summarize_payload(value: Any) -> Any:
     return value
 
 
-def _prepare_payload(log_mode: Literal["full", "minimal"], value: Any) -> Any:
-    if log_mode == "full":
+def _prepare_payload(log_mode: AiLogMode, value: Any) -> Any:
+    if log_mode == "debug-full":
         return value
 
-    return summarize_payload(value)
+    sanitized = sanitize_payload(value)
+    if log_mode == "full":
+        return sanitized
+
+    return summarize_payload(sanitized)
 
 
 class NoopAiRunLogRepository(AiRunLogRepository):
@@ -75,7 +156,7 @@ class NoopAiRunLogRepository(AiRunLogRepository):
 
 
 class InMemoryAiRunLogRepository(AiRunLogRepository):
-    def __init__(self, log_mode: Literal["full", "minimal"] = "full"):
+    def __init__(self, log_mode: AiLogMode = "full"):
         self._log_mode = log_mode
         self.entries: list[AiRunLogEntry] = []
 
@@ -101,7 +182,7 @@ class InMemoryAiRunLogRepository(AiRunLogRepository):
 
 
 class PostgresAiRunLogRepository(AiRunLogRepository):
-    def __init__(self, database_url: str, log_mode: Literal["full", "minimal"]):
+    def __init__(self, database_url: str, log_mode: AiLogMode):
         self._database_url = database_url
         self._log_mode = log_mode
 

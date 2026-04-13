@@ -24,6 +24,7 @@
 - `SESSION_SECRET`
 - `SESSION_COOKIE_NAME`
 - `AI_SERVICE_URL`
+- `AI_INTERNAL_SERVICE_TOKEN`
 - `AI_SERVICE_TIMEOUT_MS`
 
 说明：
@@ -31,6 +32,7 @@
 - `SESSION_SECRET` 在生产运行环境必须显式配置
 - 开发/测试环境允许使用开发兜底值，但会输出警告，不应带到部署环境
 - `AI_SERVICE_URL` 不配置时，首页推荐会回退到 TypeScript 规则打分
+- `AI_INTERNAL_SERVICE_TOKEN` 用于 `apps/api -> apps/ai-service` 的服务间鉴权
 - `AI_SERVICE_TIMEOUT_MS` 用于控制内部 Python AI 服务调用超时
 
 示例见：

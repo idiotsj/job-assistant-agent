@@ -103,7 +103,9 @@ def test_resume_parse_pipeline_uses_provider_result_and_logs_full_payload() -> N
     assert result.data.parsed.detectedSkills == ["Python"]
     assert result.meta.provider == "openai"
     assert result.meta.fallbackUsed is False
-    assert repository.entries[0].input_json["rawText"].startswith("同济大学")
+    assert repository.entries[0].input_json["rawText"]["redacted"] is True
+    assert repository.entries[0].input_json["rawText"]["length"] > 0
+    assert repository.entries[0].output_json["data"]["parsed"]["redacted"] is True
     assert repository.entries[0].request_id == "req-pipeline-1"
 
 
@@ -306,7 +308,8 @@ def test_resume_diagnosis_pipeline_uses_provider_result_and_logs_full_payload() 
     assert result.meta.provider == "openai"
     assert result.meta.fallbackUsed is False
     assert repository.entries[0].capability == "resume_diagnosis"
-    assert repository.entries[0].input_json["rawText"].startswith("同济大学")
+    assert repository.entries[0].input_json["rawText"]["redacted"] is True
+    assert repository.entries[0].input_json["profile"]["redacted"] is True
 
 
 def test_resume_diagnosis_pipeline_falls_back_when_provider_fails() -> None:

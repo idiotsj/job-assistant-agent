@@ -67,6 +67,26 @@ describe("api server integration", () => {
     }
   });
 
+  it("rejects forged session headers without a valid cookie session", async () => {
+    const server = await buildServer();
+
+    try {
+      const response = await server.inject({
+        method: "GET",
+        url: "/api/profile",
+        headers: {
+          "x-session-user-id": "user-1",
+          "x-internal-auth-user-id": "user-1",
+          "x-user-id": "user-1",
+        },
+      });
+
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await server.close();
+    }
+  });
+
   it("allows authenticated users to call resume parse and diagnose endpoints through cookie session", async () => {
     setServerAppContextForTesting(
       createTestAppContext(

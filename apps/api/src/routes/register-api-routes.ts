@@ -40,6 +40,23 @@ interface SessionUser {
   status?: "active" | "disabled";
 }
 
+const FORWARDED_INTERNAL_AUTH_HEADERS = new Set([
+  "x-internal-auth-user-id",
+  "x-internal-auth-user-email",
+  "x-internal-auth-user-name",
+  "x-internal-auth-user-role",
+  "x-internal-auth-user-status",
+  "x-session-user-id",
+  "x-session-user-email",
+  "x-session-user-name",
+  "x-session-user-role",
+  "x-session-user-status",
+  "x-user-id",
+  "x-user-email",
+  "x-user-name",
+  "x-demo-user-id",
+]);
+
 function getSession(request: FastifyRequest) {
   return (request as FastifyRequest & { session: SessionStore }).session;
 }
@@ -62,21 +79,24 @@ function toWebRequest(request: FastifyRequest): Request {
     if (value === undefined) {
       continue;
     }
+    if (FORWARDED_INTERNAL_AUTH_HEADERS.has(key)) {
+      continue;
+    }
 
     appendHeader(headers, key, value);
   }
 
   const sessionUser = getSession(request).get("authUser") as SessionUser | undefined;
   if (sessionUser?.id) {
-    headers.set("x-session-user-id", sessionUser.id);
+    headers.set("x-internal-auth-user-id", sessionUser.id);
     if (sessionUser.email) {
-      headers.set("x-session-user-email", sessionUser.email);
+      headers.set("x-internal-auth-user-email", sessionUser.email);
     }
     if (sessionUser.role) {
-      headers.set("x-session-user-role", sessionUser.role);
+      headers.set("x-internal-auth-user-role", sessionUser.role);
     }
     if (sessionUser.status) {
-      headers.set("x-session-user-status", sessionUser.status);
+      headers.set("x-internal-auth-user-status", sessionUser.status);
     }
   }
 

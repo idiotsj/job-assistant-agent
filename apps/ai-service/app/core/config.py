@@ -18,7 +18,8 @@ class Settings(BaseModel):
     service_name: str
     environment: str
     database_url: str | None = None
-    ai_log_mode: Literal["full", "minimal"]
+    ai_log_mode: Literal["full", "minimal", "debug-full"]
+    internal_service_token: str | None = None
     openai_api_key: str | None = None
     openai_base_url: str
     openai_model_resume_parse: str
@@ -41,6 +42,7 @@ def get_settings() -> Settings:
         environment=environment,
         database_url=_clean_env("DATABASE_URL"),
         ai_log_mode=_clean_env("AI_LOG_MODE") or default_log_mode,
+        internal_service_token=_clean_env("AI_INTERNAL_SERVICE_TOKEN"),
         openai_api_key=_clean_env("OPENAI_API_KEY"),
         openai_base_url=_clean_env("OPENAI_BASE_URL") or "https://api.openai.com/v1",
         openai_model_resume_parse=_clean_env("OPENAI_MODEL_RESUME_PARSE") or "gpt-4.1-mini",

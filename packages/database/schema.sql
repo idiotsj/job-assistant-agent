@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS civil_service_advice (
 
 CREATE TABLE IF NOT EXISTS schedule_items (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   source TEXT NOT NULL CHECK (source IN ('job', 'event', 'exam', 'user')),
   start_at TIMESTAMPTZ NOT NULL,

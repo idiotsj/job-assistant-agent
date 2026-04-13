@@ -10,6 +10,8 @@ from app.schemas.resume import ResumeParseResponseData
 from app.schemas.resume_diagnosis import ResumeDiagnosisResult
 from app.core.config import Settings
 
+INTERNAL_TOKEN = "test-internal-token"
+
 
 class FakeProvider:
     def __init__(self, responses: dict[str, object]):
@@ -33,6 +35,7 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
             environment="test",
             database_url=None,
             ai_log_mode="full",
+            internal_service_token=INTERNAL_TOKEN,
             openai_api_key="test-key",
             openai_base_url="https://example.com/v1",
             openai_model_resume_parse="gpt-test",
@@ -112,6 +115,27 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
     return TestClient(create_app(runtime)), repository
 
 
+def build_test_client_without_token() -> TestClient:
+    runtime = AiServiceRuntime(
+        settings=Settings(
+            service_name="job-assistant-ai-test",
+            environment="test",
+            database_url=None,
+            ai_log_mode="full",
+            internal_service_token=None,
+            openai_api_key="test-key",
+            openai_base_url="https://example.com/v1",
+            openai_model_resume_parse="gpt-test",
+            openai_model_resume_diagnosis="gpt-test",
+            openai_model_job_scoring="gpt-test",
+            openai_model_daily_advice="gpt-test",
+        ),
+        provider=FakeProvider({}),
+        ai_run_logs=InMemoryAiRunLogRepository(log_mode="full"),
+    )
+    return TestClient(create_app(runtime))
+
+
 def test_health() -> None:
     client, _repository = build_test_client()
     response = client.get("/health")
@@ -127,6 +151,7 @@ def test_resume_parse_route_returns_meta_and_writes_log() -> None:
     response = client.post(
         "/internal/resume/parse",
         headers={
+            "x-internal-service-token": INTERNAL_TOKEN,
             "x-request-id": "req-route-1",
             "x-ai-user-id": "user-1",
         },
@@ -151,6 +176,7 @@ def test_score_jobs_route_returns_ranked_items_with_meta() -> None:
     response = client.post(
         "/internal/recommend/score-jobs",
         headers={
+            "x-internal-service-token": INTERNAL_TOKEN,
             "x-request-id": "req-route-2",
             "x-ai-user-id": "user-2",
         },
@@ -196,6 +222,7 @@ def test_resume_diagnose_route_returns_structured_diagnosis_with_meta() -> None:
     response = client.post(
         "/internal/resume/diagnose",
         headers={
+            "x-internal-service-token": INTERNAL_TOKEN,
             "x-request-id": "req-route-4",
             "x-ai-user-id": "user-4",
         },
@@ -237,6 +264,7 @@ def test_daily_advice_route_returns_generated_advice_with_meta() -> None:
     response = client.post(
         "/internal/daily/advice",
         headers={
+            "x-internal-service-token": INTERNAL_TOKEN,
             "x-request-id": "req-route-3",
             "x-ai-user-id": "user-3",
         },
@@ -270,3 +298,30 @@ def test_daily_advice_route_returns_generated_advice_with_meta() -> None:
     assert payload["data"]["source"] == "ai"
     assert payload["meta"]["provider"] == "openai"
     assert repository.entries[-1].request_id == "req-route-3"
+
+
+def test_internal_routes_reject_requests_without_service_token() -> None:
+    client, _repository = build_test_client()
+    response = client.post(
+        "/internal/resume/parse",
+        json={
+            "rawText": "同济大学计算机科学专业，熟悉 Python。",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_internal_routes_fail_closed_when_service_token_is_not_configured() -> None:
+    client = build_test_client_without_token()
+    response = client.post(
+        "/internal/resume/parse",
+        headers={
+            "x-internal-service-token": INTERNAL_TOKEN,
+        },
+        json={
+            "rawText": "同济大学计算机科学专业，熟悉 Python。",
+        },
+    )
+
+    assert response.status_code == 503

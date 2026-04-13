@@ -13,20 +13,22 @@ export interface AuthContext {
   user: AuthUser;
 }
 
+const INTERNAL_AUTH_HEADER_PREFIX = "x-internal-auth-";
+
 function createAuthContextFromHeaders(request: Request): AuthContext | null {
-  const sessionUserId = request.headers.get("x-session-user-id");
+  const sessionUserId = request.headers.get(`${INTERNAL_AUTH_HEADER_PREFIX}user-id`);
   if (!sessionUserId) {
     return null;
   }
 
-  const roleHeader = request.headers.get("x-session-user-role");
-  const statusHeader = request.headers.get("x-session-user-status");
+  const roleHeader = request.headers.get(`${INTERNAL_AUTH_HEADER_PREFIX}user-role`);
+  const statusHeader = request.headers.get(`${INTERNAL_AUTH_HEADER_PREFIX}user-status`);
 
   return {
     user: {
       id: sessionUserId,
-      email: request.headers.get("x-session-user-email") ?? undefined,
-      name: request.headers.get("x-session-user-name") ?? undefined,
+      email: request.headers.get(`${INTERNAL_AUTH_HEADER_PREFIX}user-email`) ?? undefined,
+      name: request.headers.get(`${INTERNAL_AUTH_HEADER_PREFIX}user-name`) ?? undefined,
       role: roleHeader ? authRoleSchema.parse(roleHeader) : "user",
       status: statusHeader ? authStatusSchema.parse(statusHeader) : "active",
     },

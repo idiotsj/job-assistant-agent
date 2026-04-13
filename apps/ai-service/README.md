@@ -19,6 +19,10 @@
 
 ### `POST /internal/resume/parse`
 
+需要请求头：
+
+- `x-internal-service-token`
+
 输入简历文本，输出：
 
 - `data.parsed`
@@ -34,6 +38,10 @@
 - `fallbackUsed`
 
 ### `POST /internal/resume/diagnose`
+
+需要请求头：
+
+- `x-internal-service-token`
 
 输入简历原文、最新解析结果和当前画像，输出：
 
@@ -53,6 +61,10 @@
 
 ### `POST /internal/recommend/score-jobs`
 
+需要请求头：
+
+- `x-internal-service-token`
+
 输入用户画像和岗位候选集，输出岗位打分列表与 `meta`。
 
 当前策略是：
@@ -62,6 +74,10 @@
 - provider 不可用时自动 fallback 到规则版
 
 ### `POST /internal/daily/advice`
+
+需要请求头：
+
+- `x-internal-service-token`
 
 输入用户画像、精选建议和今日企业/岗位上下文，输出一条个性化每日建议与 `meta`。
 
@@ -73,6 +89,7 @@
 - `AI_SERVICE_ENV`
 - `DATABASE_URL`
 - `AI_LOG_MODE`
+- `AI_INTERNAL_SERVICE_TOKEN`
 - `OPENAI_API_KEY`
 - `OPENAI_BASE_URL`
 - `OPENAI_MODEL_RESUME_PARSE`
@@ -82,8 +99,9 @@
 
 日志模式约定：
 
-- 开发环境默认 `full`
-- 生产环境默认 `minimal`
+- `minimal`：默认推荐值，只保留摘要
+- `full`：保留完整结构，但会默认脱敏简历原文、画像等敏感字段
+- `debug-full`：仅限本地临时排障，允许落原始 payload，不建议进入共享或部署环境
 
 ## 本地运行
 
