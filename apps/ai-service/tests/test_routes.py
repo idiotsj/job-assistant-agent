@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from app.dependencies import AiServiceRuntime
 from app.main import create_app
 from app.schemas.daily_advice import DailyAdviceResult
+from app.schemas.job_resume_analysis import JobResumeAnalysisResult
 from app.pipelines.job_scoring import JobScoreEnhancementResponse
 from app.providers import StructuredProviderRequest, StructuredProviderResponse
 from app.repositories import InMemoryAiRunLogRepository
@@ -40,6 +41,7 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
             openai_base_url="https://example.com/v1",
             openai_model_resume_parse="gpt-test",
             openai_model_resume_diagnosis="gpt-test",
+            openai_model_job_resume_analysis="gpt-test",
             openai_model_job_scoring="gpt-test",
             openai_model_daily_advice="gpt-test",
         ),
@@ -101,6 +103,25 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
                         },
                     }
                 ),
+                "job_resume_analysis": JobResumeAnalysisResult.model_validate(
+                    {
+                        "version": "v1",
+                        "generatedAt": "2026-04-16T13:00:00.000Z",
+                        "overallScore": 78,
+                        "verdict": "partial_match",
+                        "summary": "简历和岗位有交集，但还需要补强 TypeScript 证据。",
+                        "matchedRequirements": ["岗位强调 React，你的简历里已经有对应技能信号。"],
+                        "gaps": ["岗位强调 TypeScript，但简历里还缺少直接证据。"],
+                        "resumeRisks": ["缺少量化结果或明确成果指标，竞争力容易被低估。"],
+                        "actionPlan": {
+                            "topPriority": "先补能证明 TypeScript 的项目、课程或实习证据。",
+                            "nextSteps": [
+                                "补一段能支撑 TypeScript 的经历，并写清任务、动作和结果。",
+                                "给最关键的一段项目补 1 到 2 个量化结果。",
+                            ],
+                        },
+                    }
+                ),
                 "daily_advice": DailyAdviceResult.model_validate(
                     {
                         "title": "今天先处理最匹配的岗位",
@@ -127,6 +148,7 @@ def build_test_client_without_token() -> TestClient:
             openai_base_url="https://example.com/v1",
             openai_model_resume_parse="gpt-test",
             openai_model_resume_diagnosis="gpt-test",
+            openai_model_job_resume_analysis="gpt-test",
             openai_model_job_scoring="gpt-test",
             openai_model_daily_advice="gpt-test",
         ),
@@ -257,6 +279,62 @@ def test_resume_diagnose_route_returns_structured_diagnosis_with_meta() -> None:
     assert payload["meta"]["provider"] == "openai"
     assert repository.entries[-1].capability == "resume_diagnosis"
     assert repository.entries[-1].request_id == "req-route-4"
+
+
+def test_job_resume_analysis_route_returns_structured_analysis_with_meta() -> None:
+    client, repository = build_test_client()
+    response = client.post(
+        "/internal/resume/analyze-for-job",
+        headers={
+            "x-internal-service-token": INTERNAL_TOKEN,
+            "x-request-id": "req-route-5",
+            "x-ai-user-id": "user-5",
+        },
+        json={
+            "rawText": "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+            "parsedResume": {
+                "summary": "识别到前端求职倾向",
+                "detectedSkills": ["React"],
+                "detectedJobTypes": ["前端开发"],
+                "detectedCities": ["上海"],
+                "education": {
+                    "university": "同济大学",
+                    "major": "计算机科学",
+                },
+                "confidence": 0.88,
+            },
+            "profile": {
+                "userId": "user-5",
+                "targetIndustries": ["互联网"],
+                "targetCities": ["上海"],
+                "skills": ["React"],
+                "preferredJobTypes": ["前端开发"],
+            },
+            "job": {
+                "id": "job-1",
+                "title": "前端开发实习生",
+                "companyId": "company-1",
+                "companyName": "星河科技",
+                "companyIndustry": "互联网",
+                "workLocation": "上海",
+                "tags": ["前端"],
+                "requiredSkills": ["React", "TypeScript"],
+                "description": "负责页面开发。",
+                "isFeatured": True,
+                "deadline": "2026-04-20T00:00:00.000Z",
+                "publishedAt": "2026-04-10T00:00:00.000Z",
+                "popularity": 90,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["data"]["verdict"] == "partial_match"
+    assert payload["meta"]["provider"] == "openai"
+    assert repository.entries[-1].capability == "job_resume_analysis"
+    assert repository.entries[-1].request_id == "req-route-5"
 
 
 def test_daily_advice_route_returns_generated_advice_with_meta() -> None:

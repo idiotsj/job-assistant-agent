@@ -50,6 +50,9 @@ describe("daily content service", () => {
           async diagnoseResume() {
             throw new Error("not needed");
           },
+          async analyzeResumeForJob() {
+            throw new Error("not needed");
+          },
         },
       },
     );
@@ -91,6 +94,9 @@ describe("daily content service", () => {
             throw new Error("not needed");
           },
           async diagnoseResume() {
+            throw new Error("not needed");
+          },
+          async analyzeResumeForJob() {
             throw new Error("not needed");
           },
         },

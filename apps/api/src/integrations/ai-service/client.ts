@@ -3,6 +3,8 @@ import { getAiInternalServiceToken, getAiServiceTimeoutMs, getAiServiceUrl } fro
 import {
   aiDailyAdviceRequestSchema,
   aiDailyAdviceResponseSchema,
+  aiJobResumeAnalysisRequestSchema,
+  aiJobResumeAnalysisResponseSchema,
   aiJobScoringRequestSchema,
   aiJobScoringResponseSchema,
   aiResumeDiagnosisRequestSchema,
@@ -10,6 +12,8 @@ import {
   aiResumeParseRequestSchema,
   aiResumeParseResponseSchema,
   type AiDailyAdviceRequest,
+  type AiJobResumeAnalysisData,
+  type AiJobResumeAnalysisRequest,
   type AiJobScore,
   type AiPipelineMeta,
   type AiResumeDiagnosisData,
@@ -45,12 +49,21 @@ export interface AiResumeDiagnosisResult {
   meta: AiPipelineMeta;
 }
 
+export interface AiJobResumeAnalysisResult {
+  analysis: AiJobResumeAnalysisData;
+  meta: AiPipelineMeta;
+}
+
 export interface AiServiceClient {
   enabled: boolean;
   generateDailyAdvice(input: AiDailyAdviceRequest, context?: AiServiceRequestContext): Promise<AiDailyAdviceResult>;
   scoreJobs(input: unknown, context?: AiServiceRequestContext): Promise<AiJobScoringResult>;
   parseResume(input: AiResumeParseRequest, context?: AiServiceRequestContext): Promise<AiResumeParseResult>;
   diagnoseResume(input: AiResumeDiagnosisRequest, context?: AiServiceRequestContext): Promise<AiResumeDiagnosisResult>;
+  analyzeResumeForJob(
+    input: AiJobResumeAnalysisRequest,
+    context?: AiServiceRequestContext,
+  ): Promise<AiJobResumeAnalysisResult>;
 }
 
 class DisabledAiServiceClient implements AiServiceClient {
@@ -79,6 +92,10 @@ class DisabledAiServiceClient implements AiServiceClient {
   }
 
   async diagnoseResume(_input: AiResumeDiagnosisRequest): Promise<AiResumeDiagnosisResult> {
+    throw new Error("AI service is disabled");
+  }
+
+  async analyzeResumeForJob(_input: AiJobResumeAnalysisRequest): Promise<AiJobResumeAnalysisResult> {
     throw new Error("AI service is disabled");
   }
 }
@@ -129,6 +146,19 @@ class HttpAiServiceClient implements AiServiceClient {
     const parsed = aiResumeDiagnosisResponseSchema.parse(response);
     return {
       diagnosis: parsed.data,
+      meta: parsed.meta,
+    };
+  }
+
+  async analyzeResumeForJob(
+    input: AiJobResumeAnalysisRequest,
+    context?: AiServiceRequestContext,
+  ): Promise<AiJobResumeAnalysisResult> {
+    const payload = aiJobResumeAnalysisRequestSchema.parse(input);
+    const response = await this.request("/internal/resume/analyze-for-job", payload, context);
+    const parsed = aiJobResumeAnalysisResponseSchema.parse(response);
+    return {
+      analysis: parsed.data,
       meta: parsed.meta,
     };
   }

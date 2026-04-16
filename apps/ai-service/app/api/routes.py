@@ -5,10 +5,12 @@ from app.dependencies import get_runtime
 from app.pipelines import (
     PipelineContext,
     run_daily_advice_pipeline,
+    run_job_resume_analysis_pipeline,
     run_job_scoring_pipeline,
     run_resume_diagnosis_pipeline,
     run_resume_parse_pipeline,
 )
+from app.schemas.job_resume_analysis import JobResumeAnalysisRequest, JobResumeAnalysisResponse
 from app.schemas.daily_advice import DailyAdviceRequest, DailyAdviceResponse
 from app.schemas.recommendation import (
     JobScoringRequest,
@@ -68,6 +70,27 @@ async def diagnose_resume_route(request: Request, payload: ResumeDiagnosisReques
         ),
     )
     return ResumeDiagnosisResponse(data=result.data, meta=result.meta)
+
+
+@router.post(
+    "/internal/resume/analyze-for-job",
+    response_model=JobResumeAnalysisResponse,
+    dependencies=[Depends(require_internal_service_token)],
+)
+async def analyze_resume_for_job_route(
+    request: Request,
+    payload: JobResumeAnalysisRequest,
+) -> JobResumeAnalysisResponse:
+    runtime = get_runtime(request)
+    result = await run_job_resume_analysis_pipeline(
+        payload,
+        runtime,
+        PipelineContext(
+            request_id=request.headers.get("x-request-id"),
+            user_id=request.headers.get("x-ai-user-id"),
+        ),
+    )
+    return JobResumeAnalysisResponse(data=result.data, meta=result.meta)
 
 
 @router.post(

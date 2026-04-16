@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { paginationQuerySchema } from "./http";
+import { parsedResumeSchema, profilePatchSchema, profileResumeParseInputSchema, userProfileSchema } from "./profile";
 
 export const jobSchema = z.object({
   id: z.string(),
@@ -28,5 +29,38 @@ export const jobListQuerySchema = paginationQuerySchema.extend({
     .optional(),
 });
 
+export const jobResumeAnalysisVerdictSchema = z.enum(["strong_match", "partial_match", "weak_match"]);
+
+export const jobResumeAnalysisActionPlanSchema = z.object({
+  topPriority: z.string(),
+  nextSteps: z.array(z.string()).min(2).max(4),
+});
+
+export const jobResumeAnalysisSchema = z.object({
+  version: z.string(),
+  generatedAt: z.string(),
+  overallScore: z.number().int().min(0).max(100),
+  verdict: jobResumeAnalysisVerdictSchema,
+  summary: z.string(),
+  matchedRequirements: z.array(z.string()).default([]),
+  gaps: z.array(z.string()).default([]),
+  resumeRisks: z.array(z.string()).default([]),
+  actionPlan: jobResumeAnalysisActionPlanSchema,
+});
+
+export const jobResumeAnalyzeInputSchema = profileResumeParseInputSchema;
+
+export const jobResumeAnalyzeResultSchema = z.object({
+  analysis: jobResumeAnalysisSchema,
+  parsed: parsedResumeSchema,
+  appliedPatch: profilePatchSchema,
+  profile: userProfileSchema,
+});
+
 export type Job = z.infer<typeof jobSchema>;
 export type JobListQuery = z.infer<typeof jobListQuerySchema>;
+export type JobResumeAnalysisVerdict = z.infer<typeof jobResumeAnalysisVerdictSchema>;
+export type JobResumeAnalysisActionPlan = z.infer<typeof jobResumeAnalysisActionPlanSchema>;
+export type JobResumeAnalysis = z.infer<typeof jobResumeAnalysisSchema>;
+export type JobResumeAnalyzeInput = z.infer<typeof jobResumeAnalyzeInputSchema>;
+export type JobResumeAnalyzeResult = z.infer<typeof jobResumeAnalyzeResultSchema>;

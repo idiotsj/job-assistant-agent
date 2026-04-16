@@ -1,4 +1,5 @@
 import { createServerServices } from "@/app/create-services";
+import { createServerWorkflows } from "@/app/create-workflows";
 import type { ServerAppContext, ServerRepositories } from "@/app/contracts";
 import type { AiServiceClient } from "@/integrations/ai-service/client";
 import { type AuthRepository } from "@/modules/auth/repository";
@@ -515,6 +516,37 @@ export function createTestAppContext(
     schedule: scheduleRepository,
   };
 
+  const aiService =
+    options.aiService ??
+    ({
+      enabled: false,
+      async generateDailyAdvice() {
+        throw new Error("AI service disabled in test context");
+      },
+      async scoreJobs() {
+        return {
+          items: [],
+          meta: {
+            provider: "disabled",
+            model: "disabled",
+            promptVersion: "none",
+            latencyMs: 0,
+            fallbackUsed: true,
+            tokenUsage: null,
+          },
+        };
+      },
+      async parseResume() {
+        throw new Error("AI service disabled in test context");
+      },
+      async diagnoseResume() {
+        throw new Error("AI service disabled in test context");
+      },
+      async analyzeResumeForJob() {
+        throw new Error("AI service disabled in test context");
+      },
+    } satisfies AiServiceClient);
+
   return {
     repositories,
     services: createServerServices(repositories, {
@@ -525,33 +557,8 @@ export function createTestAppContext(
           return user;
         },
       },
-      aiService:
-        options.aiService ??
-        ({
-          enabled: false,
-          async generateDailyAdvice() {
-            throw new Error("AI service disabled in test context");
-          },
-          async scoreJobs() {
-            return {
-              items: [],
-              meta: {
-                provider: "disabled",
-                model: "disabled",
-                promptVersion: "none",
-                latencyMs: 0,
-                fallbackUsed: true,
-                tokenUsage: null,
-              },
-            };
-          },
-          async parseResume() {
-            throw new Error("AI service disabled in test context");
-          },
-          async diagnoseResume() {
-            throw new Error("AI service disabled in test context");
-          },
-        } satisfies AiServiceClient),
+      aiService,
     }),
+    workflows: createServerWorkflows(repositories, aiService),
   };
 }

@@ -11,6 +11,7 @@ import { GET as getCivilServiceAdvice } from "@/routes/civil-service/advice/rout
 import { GET as getTodayContent } from "@/routes/daily-content/today/route";
 import { GET as getEvents } from "@/routes/events/route";
 import { GET as getJobs } from "@/routes/jobs/route";
+import { POST as postJobResumeAnalyze } from "@/routes/jobs/[id]/resume/analyze/route";
 import { GET as getPostgraduateAdvice } from "@/routes/postgraduate/advice/route";
 import { GET as getProfile, PUT as putProfile } from "@/routes/profile/route";
 import { POST as postProfileResumeDiagnose } from "@/routes/profile/resume/diagnose/route";
@@ -18,6 +19,7 @@ import { POST as postProfileResumeParse } from "@/routes/profile/resume/parse/ro
 import { GET as getRecommendHome } from "@/routes/recommend/home/route";
 import { DELETE as deleteScheduleItem, PUT as putScheduleItem } from "@/routes/schedule/[id]/route";
 import { GET as getSchedule, POST as postSchedule } from "@/routes/schedule/route";
+import { jobResumeAnalyzeInputSchema, jobResumeAnalyzeResultSchema } from "@/modules/jobs/schema";
 
 afterEach(() => {
   setServerAppContextForTesting(undefined);
@@ -98,6 +100,64 @@ describe("api routes", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it("validates the job resume analysis contract shape", () => {
+    const input = jobResumeAnalyzeInputSchema.parse({
+      rawText: "同济大学计算机科学专业，熟悉 React，希望做前端开发。",
+      fileName: "resume.txt",
+    });
+
+    const result = jobResumeAnalyzeResultSchema.parse({
+      analysis: {
+        version: "v1",
+        generatedAt: new Date("2026-04-16T08:00:00.000Z").toISOString(),
+        overallScore: 76,
+        verdict: "partial_match",
+        summary: "简历和岗位有一定匹配度，但还需要补强关键证据。",
+        matchedRequirements: ["岗位强调 React，你的简历里已经有对应技能信号。"],
+        gaps: ["岗位强调 TypeScript，但简历里还缺少直接证据。"],
+        resumeRisks: ["缺少量化结果或明确成果指标，竞争力容易被低估。"],
+        actionPlan: {
+          topPriority: "先补能证明 TypeScript 的项目、课程或实习证据。",
+          nextSteps: [
+            "补一段能支撑 TypeScript 的经历，并写清任务、动作和结果。",
+            "给最关键的一段项目补 1 到 2 个量化结果。",
+          ],
+        },
+      },
+      parsed: {
+        summary: "识别到前端求职倾向",
+        detectedSkills: ["React"],
+        detectedJobTypes: ["前端开发"],
+        detectedCities: ["上海"],
+        education: {
+          university: "同济大学",
+          major: "计算机科学",
+        },
+        confidence: 0.88,
+      },
+      appliedPatch: {
+        skills: ["React"],
+      },
+      profile: {
+        userId: "user-1",
+        university: "同济大学",
+        major: "计算机科学",
+        grade: "",
+        targetIndustries: [],
+        targetCities: ["上海"],
+        skills: ["React"],
+        preferredJobTypes: ["前端开发"],
+        considersPostgraduate: false,
+        considersCivilService: false,
+        resumeData: null,
+      },
+    });
+
+    expect(input.fileName).toBe("resume.txt");
+    expect(result.analysis.verdict).toBe("partial_match");
+    expect(result.analysis.actionPlan.nextSteps).toHaveLength(2);
   });
 
   it("serves profile get and put for authenticated users", async () => {
@@ -234,6 +294,9 @@ describe("api routes", () => {
                 },
               };
             },
+            async analyzeResumeForJob() {
+              throw new Error("not needed");
+            },
           },
         },
       ),
@@ -350,6 +413,9 @@ describe("api routes", () => {
                 },
               };
             },
+            async analyzeResumeForJob() {
+              throw new Error("not needed");
+            },
           },
         },
       ),
@@ -384,6 +450,194 @@ describe("api routes", () => {
 
     const response = await postProfileResumeDiagnose(
       new Request("http://localhost/api/profile/resume/diagnose", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "一份简历文本",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(503);
+  });
+
+  it("analyzes a resume against a job and only persists parse side effects", async () => {
+    const capturedContexts: Array<{ requestId?: string | null; userId?: string | null; capability?: string | null }> =
+      [];
+    setServerAppContextForTesting(
+      createTestAppContext(
+        {},
+        {
+          aiService: {
+            enabled: true,
+            async generateDailyAdvice() {
+              throw new Error("not needed");
+            },
+            async scoreJobs() {
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 10,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async parseResume(_input, context) {
+              capturedContexts.push(context ?? {});
+              return {
+                parsed: {
+                  summary: "识别到前端求职倾向",
+                  detectedSkills: ["React"],
+                  detectedJobTypes: ["前端开发"],
+                  detectedCities: ["上海"],
+                  education: {
+                    university: "同济大学",
+                    major: "计算机科学",
+                  },
+                  confidence: 0.84,
+                },
+                patch: {
+                  skills: ["React"],
+                  preferredJobTypes: ["前端开发"],
+                  targetCities: ["上海"],
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 17,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async diagnoseResume() {
+              throw new Error("not needed");
+            },
+            async analyzeResumeForJob(_input, context) {
+              capturedContexts.push(context ?? {});
+              return {
+                analysis: {
+                  version: "v1",
+                  generatedAt: new Date("2026-04-16T10:00:00.000Z").toISOString(),
+                  overallScore: 74,
+                  verdict: "partial_match",
+                  summary: "简历和岗位有明显交集，但需要补强 TypeScript 相关证据。",
+                  matchedRequirements: ["岗位强调 React，你的简历里已经有对应技能信号。"],
+                  gaps: ["岗位强调 TypeScript，但简历里还缺少直接证据。"],
+                  resumeRisks: ["缺少量化结果或明确成果指标，竞争力容易被低估。"],
+                  actionPlan: {
+                    topPriority: "先补能证明 TypeScript 的项目、课程或实习证据。",
+                    nextSteps: [
+                      "补一段能支撑 TypeScript 的经历，并写清任务、动作和结果。",
+                      "给最关键的一段项目补 1 到 2 个量化结果。",
+                    ],
+                  },
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 18,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+          },
+        },
+      ),
+    );
+
+    const response = await postJobResumeAnalyze(
+      new Request("http://localhost/api/jobs/job-1/resume/analyze", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+          fileName: "resume.txt",
+        }),
+      }),
+    );
+
+    const payload = await response.json();
+    expect(response.status).toBe(200);
+    expect(payload.data.analysis.verdict).toBe("partial_match");
+    expect(payload.data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
+    expect(payload.data.profile.resumeData.resumeDiagnosis).toBeUndefined();
+    expect(capturedContexts[0]?.capability).toBe("resume_parse");
+    expect(capturedContexts[1]?.capability).toBe("job_resume_analysis");
+    expect(capturedContexts[1]?.requestId).toBe(response.headers.get("x-request-id"));
+  });
+
+  it("returns 404 when job resume analysis targets a missing job", async () => {
+    setServerAppContextForTesting(
+      createTestAppContext(
+        {},
+        {
+          aiService: {
+            enabled: true,
+            async generateDailyAdvice() {
+              throw new Error("not needed");
+            },
+            async scoreJobs() {
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 8,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async parseResume() {
+              throw new Error("not needed");
+            },
+            async diagnoseResume() {
+              throw new Error("not needed");
+            },
+            async analyzeResumeForJob() {
+              throw new Error("not needed");
+            },
+          },
+        },
+      ),
+    );
+
+    const response = await postJobResumeAnalyze(
+      new Request("http://localhost/api/jobs/missing-job/resume/analyze", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "一份简历文本",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 503 when job resume analysis service is unavailable", async () => {
+    setServerAppContextForTesting(createTestAppContext());
+
+    const response = await postJobResumeAnalyze(
+      new Request("http://localhost/api/jobs/job-1/resume/analyze", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -549,6 +803,9 @@ describe("api routes", () => {
               throw new Error("not needed");
             },
             async diagnoseResume() {
+              throw new Error("not needed");
+            },
+            async analyzeResumeForJob() {
               throw new Error("not needed");
             },
           },

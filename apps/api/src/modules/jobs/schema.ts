@@ -1,2 +1,17 @@
-export { jobListQuerySchema, jobSchema } from "@job-assistant/contracts/jobs";
-export type { Job, JobListQuery } from "@job-assistant/contracts/jobs";
+export {
+  jobListQuerySchema,
+  jobResumeAnalysisSchema,
+  jobResumeAnalysisVerdictSchema,
+  jobResumeAnalyzeInputSchema,
+  jobResumeAnalyzeResultSchema,
+  jobSchema,
+} from "@job-assistant/contracts/jobs";
+export type {
+  Job,
+  JobListQuery,
+  JobResumeAnalysis,
+  JobResumeAnalysisActionPlan,
+  JobResumeAnalysisVerdict,
+  JobResumeAnalyzeInput,
+  JobResumeAnalyzeResult,
+} from "@job-assistant/contracts/jobs";

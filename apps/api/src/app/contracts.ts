@@ -19,6 +19,7 @@ import type { ProfileService } from "@/modules/profile/service";
 import type { RecommendationService } from "@/modules/recommendation/service";
 import type { ScheduleRepository } from "@/modules/schedule/repository";
 import type { ScheduleService } from "@/modules/schedule/service";
+import type { JobResumeAnalysisWorkflow } from "@/workflows/job-resume-analysis/run-job-resume-analysis";
 
 export interface ServerRepositories {
   auth: AuthRepository;
@@ -47,7 +48,12 @@ export interface ServerServices {
   recommendation: RecommendationService;
 }
 
+export interface ServerWorkflows {
+  jobResumeAnalysis: JobResumeAnalysisWorkflow;
+}
+
 export interface ServerAppContext {
   repositories: ServerRepositories;
   services: ServerServices;
+  workflows: ServerWorkflows;
 }

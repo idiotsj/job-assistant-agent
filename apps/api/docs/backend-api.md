@@ -135,6 +135,7 @@
 - `GET /api/recommend/home`
 - `GET /api/jobs`
 - `GET /api/jobs/:id`
+- `POST /api/jobs/:id/resume/analyze`
 - `GET /api/companies`
 - `GET /api/companies/:id`
 - `GET /api/cases`
@@ -219,6 +220,53 @@
 - 如果 `apps/api` 无法连接 `apps/ai-service`，接口返回 `503`
 - 如果 `apps/ai-service` 可达但上游 provider 失败，内部 pipeline 会回退到规则版诊断，公共接口仍返回可用结果
 
+### `POST /api/jobs/:id/resume/analyze`
+
+- 说明：执行一次“读取岗位详情 + 解析简历 + 岗位定向分析”的同步流程，回答“这份简历投这个岗位行不行、缺什么、先改哪里”
+- 鉴权：需要
+
+请求体：
+
+```json
+{
+  "rawText": "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+  "fileName": "resume.txt"
+}
+```
+
+响应中的 `data` 包含：
+
+- `analysis`：岗位定向分析结果
+- `parsed`：本次分析前置使用的最新结构化解析结果
+- `appliedPatch`：本次根据简历安全写回的保守画像补丁
+- `profile`：写回后的最新画像
+
+`analysis` 的固定结构：
+
+- `version`
+- `generatedAt`
+- `overallScore`
+- `verdict`
+  - `strong_match`
+  - `partial_match`
+  - `weak_match`
+- `summary`
+- `matchedRequirements`
+- `gaps`
+- `resumeRisks`
+- `actionPlan`
+  - `topPriority`
+  - `nextSteps`
+
+行为边界：
+
+- 每次请求都必须传 `rawText`，第一版不支持只基于缓存简历分析
+- 接口会刷新 `profile.resumeData.parsedResume`，并应用保守画像补丁
+- 岗位定向分析结果本身不持久化、不保留历史列表
+- 如果岗位不存在，接口返回 `404`
+- 如果 `apps/api` 无法连接 `apps/ai-service`，接口返回 `503`
+- 如果 `apps/ai-service` 可达但 provider 失败，内部 pipeline 会回退到规则版岗位分析，公共接口仍返回可用结果
+
 ## 3.1 内部 AI 服务协作
 
 当前仓库新增了内部 Python 服务：
@@ -230,6 +278,7 @@
 - 岗位候选打分：`POST /internal/recommend/score-jobs`
 - 简历结构化解析：`POST /internal/resume/parse`
 - 通用简历诊断：`POST /internal/resume/diagnose`
+- 岗位定向简历分析：`POST /internal/resume/analyze-for-job`
 
 说明：
 
