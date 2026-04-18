@@ -545,6 +545,9 @@ export function createTestAppContext(
       async analyzeResumeForJob() {
         throw new Error("AI service disabled in test context");
       },
+      async suggestResumeRewriteForJob() {
+        throw new Error("AI service disabled in test context");
+      },
     } satisfies AiServiceClient);
 
   return {

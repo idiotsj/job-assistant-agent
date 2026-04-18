@@ -57,6 +57,33 @@ export const jobResumeAnalyzeResultSchema = z.object({
   profile: userProfileSchema,
 });
 
+export const jobResumeRewriteSectionSchema = z.object({
+  section: z.enum(["headline", "summary", "skills", "project", "experience"]),
+  currentIssue: z.string(),
+  rewriteGoal: z.string(),
+  suggestedText: z.string(),
+});
+
+export const jobResumeRewriteSuggestionsSchema = z.object({
+  version: z.string(),
+  generatedAt: z.string(),
+  summary: z.string(),
+  headlineSuggestion: z.string(),
+  summarySuggestion: z.string(),
+  keywordSuggestions: z.array(z.string()).min(3).max(8),
+  sectionSuggestions: z.array(jobResumeRewriteSectionSchema).min(2).max(5),
+  actionChecklist: z.array(z.string()).min(2).max(4),
+});
+
+export const jobResumeRewriteSuggestionsInputSchema = profileResumeParseInputSchema;
+
+export const jobResumeRewriteSuggestionsResultSchema = z.object({
+  rewriteSuggestions: jobResumeRewriteSuggestionsSchema,
+  parsed: parsedResumeSchema,
+  appliedPatch: profilePatchSchema,
+  profile: userProfileSchema,
+});
+
 export type Job = z.infer<typeof jobSchema>;
 export type JobListQuery = z.infer<typeof jobListQuerySchema>;
 export type JobResumeAnalysisVerdict = z.infer<typeof jobResumeAnalysisVerdictSchema>;
@@ -64,3 +91,7 @@ export type JobResumeAnalysisActionPlan = z.infer<typeof jobResumeAnalysisAction
 export type JobResumeAnalysis = z.infer<typeof jobResumeAnalysisSchema>;
 export type JobResumeAnalyzeInput = z.infer<typeof jobResumeAnalyzeInputSchema>;
 export type JobResumeAnalyzeResult = z.infer<typeof jobResumeAnalyzeResultSchema>;
+export type JobResumeRewriteSection = z.infer<typeof jobResumeRewriteSectionSchema>;
+export type JobResumeRewriteSuggestions = z.infer<typeof jobResumeRewriteSuggestionsSchema>;
+export type JobResumeRewriteSuggestionsInput = z.infer<typeof jobResumeRewriteSuggestionsInputSchema>;
+export type JobResumeRewriteSuggestionsResult = z.infer<typeof jobResumeRewriteSuggestionsResultSchema>;

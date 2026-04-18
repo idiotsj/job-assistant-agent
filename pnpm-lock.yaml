@@ -49,13 +49,22 @@ importers:
         version: 6.0.2
       vitest:
         specifier: 4.1.3
-        version: 4.1.3(@types/node@25.5.2)(vite@8.0.7(@types/node@25.5.2)(tsx@4.20.6))
+        version: 4.1.3(@types/node@25.5.2)(vite@8.0.7(@types/node@25.5.2)(esbuild@0.25.12)(tsx@4.20.6))
 
   apps/web:
     dependencies:
       '@job-assistant/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      framer-motion:
+        specifier: ^12.38.0
+        version: 12.38.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      lucide-react:
+        specifier: ^1.8.0
+        version: 1.8.0(react@19.2.4)
       next:
         specifier: 16.2.2
         version: 16.2.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -65,6 +74,9 @@ importers:
       react-dom:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
+      tailwind-merge:
+        specifier: ^3.5.0
+        version: 3.5.0
       zod:
         specifier: 4.3.6
         version: 4.3.6
@@ -83,7 +95,7 @@ importers:
         version: 6.0.2
       vitest:
         specifier: 4.1.3
-        version: 4.1.3(@types/node@25.5.2)(vite@8.0.7(@types/node@25.5.2)(tsx@4.20.6))
+        version: 4.1.3(@types/node@25.5.2)(vite@8.0.7(@types/node@25.5.2)(esbuild@0.25.12)(tsx@4.20.6))
 
   packages/contracts:
     dependencies:
@@ -915,6 +927,10 @@ packages:
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
 
+  clsx@2.1.1:
+    resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
+    engines: {node: '>=6'}
+
   commander@4.1.1:
     resolution: {integrity: sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA==}
     engines: {node: '>= 6'}
@@ -1016,6 +1032,20 @@ packages:
 
   fix-dts-default-cjs-exports@1.0.1:
     resolution: {integrity: sha512-pVIECanWFC61Hzl2+oOCtoJ3F17kglZC/6N94eRWycFgBH35hHx0Li604ZIzhseh97mf2p0cv7vVrOZGoqhlEg==}
+
+  framer-motion@12.38.0:
+    resolution: {integrity: sha512-rFYkY/pigbcswl1XQSb7q424kSTQ8q6eAC+YUsSKooHQYuLdzdHjrt6uxUC+PRAO++q5IS7+TamgIw1AphxR+g==}
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -1133,11 +1163,22 @@ packages:
   lodash.sortby@4.7.0:
     resolution: {integrity: sha512-HDWXG8isMntAyRF5vZ7xKuEvOhT4AhlRt/3czTSjvGUxjYCBVRQY48ViDHyfYz9VIoBkW4TMGQNapx+l3RUwdA==}
 
+  lucide-react@1.8.0:
+    resolution: {integrity: sha512-WuvlsjngSk7TnTBJ1hsCy3ql9V9VOdcPkd3PKcSmM34vJD8KG6molxz7m7zbYFgICwsanQWmJ13JlYs4Zp7Arw==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==}
+
+  motion-dom@12.38.0:
+    resolution: {integrity: sha512-pdkHLD8QYRp8VfiNLb8xIBJis1byQ9gPT3Jnh2jqfFtAsWUA3dEepDlsWe/xMpO8McV+VdpKVcp+E+TGJEtOoA==}
+
+  motion-utils@12.36.0:
+    resolution: {integrity: sha512-eHWisygbiwVvf6PZ1vhaHCLamvkSbPIeAYxWUuL3a2PD/TROgE7FvfHWTIH4vMl798QLfMw15nRqIaRDXTlYRg==}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -1396,6 +1437,9 @@ packages:
     resolution: {integrity: sha512-DhuTmvZWux4H1UOnWMB3sk0sbaCVOoQZjv8u1rDoTV0HTdGem9hkAZtl4JZy8P2z4Bg0nT+YMeOFyVr4zcG5Tw==}
     engines: {node: '>=16 || 14 >=14.17'}
     hasBin: true
+
+  tailwind-merge@3.5.0:
+    resolution: {integrity: sha512-I8K9wewnVDkL1NTGoqWmVEIlUcB9gFriAEkXkfCjX5ib8ezGxtR3xD7iZIxrfArjEsH7F1CHD4RFUtxefdqV/A==}
 
   thenify-all@1.6.0:
     resolution: {integrity: sha512-RNxQH/qI8/t3thXJDwcstUO4zeqo64+Uy/+sNVRBx4Xn2OX+OZ9oP+iJnNFqplFra2ZUVeKCSa2oVWi3T4uVmA==}
@@ -2041,7 +2085,7 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.3(vite@8.0.7(@types/node@25.5.2)(tsx@4.20.6))':
+  '@vitest/mocker@4.1.3(vite@8.0.7(@types/node@25.5.2)(esbuild@0.25.12)(tsx@4.20.6))':
     dependencies:
       '@vitest/spy': 4.1.3
       estree-walker: 3.0.3
@@ -2135,6 +2179,8 @@ snapshots:
       readdirp: 4.1.2
 
   client-only@0.0.1: {}
+
+  clsx@2.1.1: {}
 
   commander@4.1.1: {}
 
@@ -2263,6 +2309,15 @@ snapshots:
       mlly: 1.8.2
       rollup: 4.60.1
 
+  framer-motion@12.38.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      motion-dom: 12.38.0
+      motion-utils: 12.36.0
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
   fsevents@2.3.3:
     optional: true
 
@@ -2345,6 +2400,10 @@ snapshots:
 
   lodash.sortby@4.7.0: {}
 
+  lucide-react@1.8.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -2355,6 +2414,12 @@ snapshots:
       pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.6.3
+
+  motion-dom@12.38.0:
+    dependencies:
+      motion-utils: 12.36.0
+
+  motion-utils@12.36.0: {}
 
   ms@2.1.3: {}
 
@@ -2637,6 +2702,8 @@ snapshots:
       tinyglobby: 0.2.16
       ts-interface-checker: 0.1.13
 
+  tailwind-merge@3.5.0: {}
+
   thenify-all@1.6.0:
     dependencies:
       thenify: 3.3.1
@@ -2728,10 +2795,10 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.20.6
 
-  vitest@4.1.3(@types/node@25.5.2)(vite@8.0.7(@types/node@25.5.2)(tsx@4.20.6)):
+  vitest@4.1.3(@types/node@25.5.2)(vite@8.0.7(@types/node@25.5.2)(esbuild@0.25.12)(tsx@4.20.6)):
     dependencies:
       '@vitest/expect': 4.1.3
-      '@vitest/mocker': 4.1.3(vite@8.0.7(@types/node@25.5.2)(tsx@4.20.6))
+      '@vitest/mocker': 4.1.3(vite@8.0.7(@types/node@25.5.2)(esbuild@0.25.12)(tsx@4.20.6))
       '@vitest/pretty-format': 4.1.3
       '@vitest/runner': 4.1.3
       '@vitest/snapshot': 4.1.3

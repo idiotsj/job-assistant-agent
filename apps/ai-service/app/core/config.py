@@ -25,6 +25,7 @@ class Settings(BaseModel):
     openai_model_resume_parse: str
     openai_model_resume_diagnosis: str
     openai_model_job_resume_analysis: str
+    openai_model_job_resume_rewrite: str
     openai_model_job_scoring: str
     openai_model_daily_advice: str
 
@@ -49,6 +50,7 @@ def get_settings() -> Settings:
         openai_model_resume_parse=_clean_env("OPENAI_MODEL_RESUME_PARSE") or "gpt-4.1-mini",
         openai_model_resume_diagnosis=_clean_env("OPENAI_MODEL_RESUME_DIAGNOSIS") or "gpt-4.1-mini",
         openai_model_job_resume_analysis=_clean_env("OPENAI_MODEL_JOB_RESUME_ANALYSIS") or "gpt-4.1-mini",
+        openai_model_job_resume_rewrite=_clean_env("OPENAI_MODEL_JOB_RESUME_REWRITE") or "gpt-4.1-mini",
         openai_model_job_scoring=_clean_env("OPENAI_MODEL_JOB_SCORING") or "gpt-4.1-mini",
         openai_model_daily_advice=_clean_env("OPENAI_MODEL_DAILY_ADVICE") or "gpt-4.1-mini",
     )

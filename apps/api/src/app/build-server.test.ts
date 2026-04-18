@@ -87,7 +87,7 @@ describe("api server integration", () => {
     }
   });
 
-  it("allows authenticated users to call resume parse, diagnose, and job resume analysis through cookie session", async () => {
+  it("allows authenticated users to call resume parse, diagnose, job analysis, and rewrite suggestions through cookie session", async () => {
     setServerAppContextForTesting(
       createTestAppContext(
         {},
@@ -215,6 +215,44 @@ describe("api server integration", () => {
                 },
               };
             },
+            async suggestResumeRewriteForJob() {
+              return {
+                rewriteSuggestions: {
+                  version: "v1",
+                  generatedAt: new Date().toISOString(),
+                  summary: "建议优先改写简历开头、技能区和最贴近岗位的一段项目经历。",
+                  headlineSuggestion: "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                  summarySuggestion: "聚焦前端开发方向，已具备 Python 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                  keywordSuggestions: ["前端开发", "Python", "React"],
+                  sectionSuggestions: [
+                    {
+                      section: "headline",
+                      currentIssue: "当前简历抬头不够贴近目标岗位。",
+                      rewriteGoal: "让招聘方一眼看到投递方向。",
+                      suggestedText: "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                    },
+                    {
+                      section: "summary",
+                      currentIssue: "缺少岗位定向摘要。",
+                      rewriteGoal: "在开头快速说明能力与目标岗位的关联。",
+                      suggestedText: "聚焦前端开发方向，已具备 Python 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                    },
+                  ],
+                  actionChecklist: [
+                    "把岗位关键词提前到简历开头和技能区。",
+                    "优先改写最贴近目标岗位的一段项目经历。",
+                  ],
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 17,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
           },
         },
       ),
@@ -279,6 +317,22 @@ describe("api server integration", () => {
       expect(analyzeResponse.statusCode).toBe(200);
       expect(analyzeResponse.json().data.analysis.verdict).toBe("partial_match");
       expect(analyzeResponse.json().data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
+
+      const rewriteResponse = await server.inject({
+        method: "POST",
+        url: "/api/jobs/job-1/resume/rewrite-suggestions",
+        headers: {
+          cookie: cookieHeader,
+        },
+        payload: {
+          rawText: "同济大学计算机科学专业，熟悉 Python，目标前端开发。",
+          fileName: "resume.txt",
+        },
+      });
+
+      expect(rewriteResponse.statusCode).toBe(200);
+      expect(rewriteResponse.json().data.rewriteSuggestions.keywordSuggestions).toContain("React");
+      expect(rewriteResponse.json().data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
     } finally {
       await server.close();
     }

@@ -6,11 +6,13 @@ from app.pipelines import (
     PipelineContext,
     run_daily_advice_pipeline,
     run_job_resume_analysis_pipeline,
+    run_job_resume_rewrite_pipeline,
     run_job_scoring_pipeline,
     run_resume_diagnosis_pipeline,
     run_resume_parse_pipeline,
 )
 from app.schemas.job_resume_analysis import JobResumeAnalysisRequest, JobResumeAnalysisResponse
+from app.schemas.job_resume_rewrite import JobResumeRewriteRequest, JobResumeRewriteResponse
 from app.schemas.daily_advice import DailyAdviceRequest, DailyAdviceResponse
 from app.schemas.recommendation import (
     JobScoringRequest,
@@ -91,6 +93,27 @@ async def analyze_resume_for_job_route(
         ),
     )
     return JobResumeAnalysisResponse(data=result.data, meta=result.meta)
+
+
+@router.post(
+    "/internal/resume/suggest-rewrite-for-job",
+    response_model=JobResumeRewriteResponse,
+    dependencies=[Depends(require_internal_service_token)],
+)
+async def suggest_resume_rewrite_for_job_route(
+    request: Request,
+    payload: JobResumeRewriteRequest,
+) -> JobResumeRewriteResponse:
+    runtime = get_runtime(request)
+    result = await run_job_resume_rewrite_pipeline(
+        payload,
+        runtime,
+        PipelineContext(
+            request_id=request.headers.get("x-request-id"),
+            user_id=request.headers.get("x-ai-user-id"),
+        ),
+    )
+    return JobResumeRewriteResponse(data=result.data, meta=result.meta)
 
 
 @router.post(

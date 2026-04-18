@@ -4,6 +4,7 @@ from app.dependencies import AiServiceRuntime
 from app.main import create_app
 from app.schemas.daily_advice import DailyAdviceResult
 from app.schemas.job_resume_analysis import JobResumeAnalysisResult
+from app.schemas.job_resume_rewrite import JobResumeRewriteSuggestionsResult
 from app.pipelines.job_scoring import JobScoreEnhancementResponse
 from app.providers import StructuredProviderRequest, StructuredProviderResponse
 from app.repositories import InMemoryAiRunLogRepository
@@ -42,6 +43,7 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
             openai_model_resume_parse="gpt-test",
             openai_model_resume_diagnosis="gpt-test",
             openai_model_job_resume_analysis="gpt-test",
+            openai_model_job_resume_rewrite="gpt-test",
             openai_model_job_scoring="gpt-test",
             openai_model_daily_advice="gpt-test",
         ),
@@ -122,6 +124,34 @@ def build_test_client() -> tuple[TestClient, InMemoryAiRunLogRepository]:
                         },
                     }
                 ),
+                "job_resume_rewrite": JobResumeRewriteSuggestionsResult.model_validate(
+                    {
+                        "version": "v1",
+                        "generatedAt": "2026-04-17T13:00:00.000Z",
+                        "summary": "建议优先改写简历开头、技能区和最贴近岗位的一段项目经历。",
+                        "headlineSuggestion": "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                        "summarySuggestion": "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                        "keywordSuggestions": ["前端开发", "React", "TypeScript"],
+                        "sectionSuggestions": [
+                            {
+                                "section": "headline",
+                                "currentIssue": "当前简历抬头不够贴近目标岗位。",
+                                "rewriteGoal": "让招聘方一眼看到投递方向。",
+                                "suggestedText": "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                            },
+                            {
+                                "section": "summary",
+                                "currentIssue": "缺少岗位定向摘要。",
+                                "rewriteGoal": "在开头快速说明能力与目标岗位的关联。",
+                                "suggestedText": "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                            },
+                        ],
+                        "actionChecklist": [
+                            "把岗位关键词提前到简历开头和技能区。",
+                            "优先改写最贴近目标岗位的一段项目经历。",
+                        ],
+                    }
+                ),
                 "daily_advice": DailyAdviceResult.model_validate(
                     {
                         "title": "今天先处理最匹配的岗位",
@@ -149,6 +179,7 @@ def build_test_client_without_token() -> TestClient:
             openai_model_resume_parse="gpt-test",
             openai_model_resume_diagnosis="gpt-test",
             openai_model_job_resume_analysis="gpt-test",
+            openai_model_job_resume_rewrite="gpt-test",
             openai_model_job_scoring="gpt-test",
             openai_model_daily_advice="gpt-test",
         ),
@@ -335,6 +366,62 @@ def test_job_resume_analysis_route_returns_structured_analysis_with_meta() -> No
     assert payload["meta"]["provider"] == "openai"
     assert repository.entries[-1].capability == "job_resume_analysis"
     assert repository.entries[-1].request_id == "req-route-5"
+
+
+def test_job_resume_rewrite_route_returns_structured_suggestions_with_meta() -> None:
+    client, repository = build_test_client()
+    response = client.post(
+        "/internal/resume/suggest-rewrite-for-job",
+        headers={
+            "x-internal-service-token": INTERNAL_TOKEN,
+            "x-request-id": "req-route-6",
+            "x-ai-user-id": "user-6",
+        },
+        json={
+            "rawText": "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+            "parsedResume": {
+                "summary": "识别到前端求职倾向",
+                "detectedSkills": ["React"],
+                "detectedJobTypes": ["前端开发"],
+                "detectedCities": ["上海"],
+                "education": {
+                    "university": "同济大学",
+                    "major": "计算机科学",
+                },
+                "confidence": 0.88,
+            },
+            "profile": {
+                "userId": "user-6",
+                "targetIndustries": ["互联网"],
+                "targetCities": ["上海"],
+                "skills": ["React"],
+                "preferredJobTypes": ["前端开发"],
+            },
+            "job": {
+                "id": "job-1",
+                "title": "前端开发实习生",
+                "companyId": "company-1",
+                "companyName": "星河科技",
+                "companyIndustry": "互联网",
+                "workLocation": "上海",
+                "tags": ["前端"],
+                "requiredSkills": ["React", "TypeScript"],
+                "description": "负责页面开发。",
+                "isFeatured": True,
+                "deadline": "2026-04-20T00:00:00.000Z",
+                "publishedAt": "2026-04-10T00:00:00.000Z",
+                "popularity": 90,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["data"]["keywordSuggestions"] == ["前端开发", "React", "TypeScript"]
+    assert payload["meta"]["provider"] == "openai"
+    assert repository.entries[-1].capability == "job_resume_rewrite"
+    assert repository.entries[-1].request_id == "req-route-6"
 
 
 def test_daily_advice_route_returns_generated_advice_with_meta() -> None:

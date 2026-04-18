@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { companySchema } from "@/modules/companies/schema";
 import { dailyAdviceSchema } from "@/modules/daily-content/schema";
-import { jobResumeAnalysisSchema, jobSchema } from "@/modules/jobs/schema";
+import { jobResumeAnalysisSchema, jobResumeRewriteSuggestionsSchema, jobSchema } from "@/modules/jobs/schema";
 import { parsedResumeSchema, profilePatchSchema, resumeDiagnosisSchema, userProfileSchema } from "@/modules/profile/schema";
 
 export const aiJobScoringRequestSchema = z.object({
@@ -73,6 +73,19 @@ export const aiJobResumeAnalysisResponseSchema = z.object({
   meta: aiPipelineMetaSchema,
 });
 
+export const aiJobResumeRewriteSuggestionsRequestSchema = z.object({
+  rawText: z.string().min(1),
+  parsedResume: parsedResumeSchema,
+  profile: userProfileSchema.nullable(),
+  job: jobSchema,
+});
+
+export const aiJobResumeRewriteSuggestionsResponseSchema = z.object({
+  success: z.literal(true),
+  data: jobResumeRewriteSuggestionsSchema,
+  meta: aiPipelineMetaSchema,
+});
+
 export const aiDailyAdviceRequestSchema = z.object({
   profile: userProfileSchema.nullable(),
   curatedAdvice: z
@@ -105,3 +118,6 @@ export type AiResumeDiagnosisResponse = z.infer<typeof aiResumeDiagnosisResponse
 export type AiJobResumeAnalysisRequest = z.infer<typeof aiJobResumeAnalysisRequestSchema>;
 export type AiJobResumeAnalysisData = z.infer<typeof aiJobResumeAnalysisResponseSchema>["data"];
 export type AiJobResumeAnalysisResponse = z.infer<typeof aiJobResumeAnalysisResponseSchema>;
+export type AiJobResumeRewriteSuggestionsRequest = z.infer<typeof aiJobResumeRewriteSuggestionsRequestSchema>;
+export type AiJobResumeRewriteSuggestionsData = z.infer<typeof aiJobResumeRewriteSuggestionsResponseSchema>["data"];
+export type AiJobResumeRewriteSuggestionsResponse = z.infer<typeof aiJobResumeRewriteSuggestionsResponseSchema>;

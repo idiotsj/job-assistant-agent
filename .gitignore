@@ -4,10 +4,13 @@ coverage/
 dist/
 .turbo/
 .pnpm-store/
+.playwright-cli/
+output/
 .env
 .env.local
 __pycache__/
 .pytest_cache/
 .venv/
+apps/web/.next-dev*.log
 data/*.db
 *.tsbuildinfo

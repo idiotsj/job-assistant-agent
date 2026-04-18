@@ -4,6 +4,10 @@ export {
   jobResumeAnalysisVerdictSchema,
   jobResumeAnalyzeInputSchema,
   jobResumeAnalyzeResultSchema,
+  jobResumeRewriteSectionSchema,
+  jobResumeRewriteSuggestionsInputSchema,
+  jobResumeRewriteSuggestionsResultSchema,
+  jobResumeRewriteSuggestionsSchema,
   jobSchema,
 } from "@job-assistant/contracts/jobs";
 export type {
@@ -14,4 +18,8 @@ export type {
   JobResumeAnalysisVerdict,
   JobResumeAnalyzeInput,
   JobResumeAnalyzeResult,
+  JobResumeRewriteSection,
+  JobResumeRewriteSuggestions,
+  JobResumeRewriteSuggestionsInput,
+  JobResumeRewriteSuggestionsResult,
 } from "@job-assistant/contracts/jobs";

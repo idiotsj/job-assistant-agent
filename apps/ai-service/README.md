@@ -83,6 +83,29 @@
 - provider 不可用时自动 fallback 到规则版岗位分析
 - 每次调用都会写 `ai_run_logs`，capability 固定为 `job_resume_analysis`
 
+### `POST /internal/resume/suggest-rewrite-for-job`
+
+需要请求头：
+
+- `x-internal-service-token`
+
+输入简历原文、最新解析结果、当前画像和岗位详情，输出：
+
+- `data.summary`
+- `data.headlineSuggestion`
+- `data.summarySuggestion`
+- `data.keywordSuggestions`
+- `data.sectionSuggestions`
+- `data.actionChecklist`
+- `meta`
+
+当前策略是：
+
+- `apps/api` 先取岗位详情，再复用 `resume_parse`
+- 然后把 `job + rawText + parsedResume + profile` 交给 `job_resume_rewrite`
+- provider 不可用时自动 fallback 到规则版改写建议
+- 每次调用都会写 `ai_run_logs`，capability 固定为 `job_resume_rewrite`
+
 ### `POST /internal/recommend/score-jobs`
 
 需要请求头：
@@ -119,6 +142,7 @@
 - `OPENAI_MODEL_RESUME_PARSE`
 - `OPENAI_MODEL_RESUME_DIAGNOSIS`
 - `OPENAI_MODEL_JOB_RESUME_ANALYSIS`
+- `OPENAI_MODEL_JOB_RESUME_REWRITE`
 - `OPENAI_MODEL_JOB_SCORING`
 - `OPENAI_MODEL_DAILY_ADVICE`
 

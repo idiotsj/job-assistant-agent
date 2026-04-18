@@ -12,6 +12,7 @@ import { GET as getTodayContent } from "@/routes/daily-content/today/route";
 import { GET as getEvents } from "@/routes/events/route";
 import { GET as getJobs } from "@/routes/jobs/route";
 import { POST as postJobResumeAnalyze } from "@/routes/jobs/[id]/resume/analyze/route";
+import { POST as postJobResumeRewriteSuggestions } from "@/routes/jobs/[id]/resume/rewrite-suggestions/route";
 import { GET as getPostgraduateAdvice } from "@/routes/postgraduate/advice/route";
 import { GET as getProfile, PUT as putProfile } from "@/routes/profile/route";
 import { POST as postProfileResumeDiagnose } from "@/routes/profile/resume/diagnose/route";
@@ -19,7 +20,12 @@ import { POST as postProfileResumeParse } from "@/routes/profile/resume/parse/ro
 import { GET as getRecommendHome } from "@/routes/recommend/home/route";
 import { DELETE as deleteScheduleItem, PUT as putScheduleItem } from "@/routes/schedule/[id]/route";
 import { GET as getSchedule, POST as postSchedule } from "@/routes/schedule/route";
-import { jobResumeAnalyzeInputSchema, jobResumeAnalyzeResultSchema } from "@/modules/jobs/schema";
+import {
+  jobResumeAnalyzeInputSchema,
+  jobResumeAnalyzeResultSchema,
+  jobResumeRewriteSuggestionsInputSchema,
+  jobResumeRewriteSuggestionsResultSchema,
+} from "@/modules/jobs/schema";
 
 afterEach(() => {
   setServerAppContextForTesting(undefined);
@@ -160,6 +166,73 @@ describe("api routes", () => {
     expect(result.analysis.actionPlan.nextSteps).toHaveLength(2);
   });
 
+  it("validates the job resume rewrite suggestions contract shape", () => {
+    const input = jobResumeRewriteSuggestionsInputSchema.parse({
+      rawText: "同济大学计算机科学专业，熟悉 React，希望做前端开发。",
+      fileName: "resume.txt",
+    });
+
+    const result = jobResumeRewriteSuggestionsResultSchema.parse({
+      rewriteSuggestions: {
+        version: "v1",
+        generatedAt: new Date("2026-04-17T08:00:00.000Z").toISOString(),
+        summary: "建议优先改写简历开头、技能区和最贴近岗位的一段项目经历。",
+        headlineSuggestion: "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+        summarySuggestion: "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+        keywordSuggestions: ["前端开发", "React", "TypeScript"],
+        sectionSuggestions: [
+          {
+            section: "headline",
+            currentIssue: "当前简历抬头不够贴近目标岗位。",
+            rewriteGoal: "让招聘方一眼看到投递方向。",
+            suggestedText: "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+          },
+          {
+            section: "summary",
+            currentIssue: "缺少岗位定向摘要。",
+            rewriteGoal: "在开头快速说明能力与目标岗位的关联。",
+            suggestedText: "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+          },
+        ],
+        actionChecklist: [
+          "把岗位关键词提前到简历开头和技能区。",
+          "优先改写最贴近目标岗位的一段项目经历。",
+        ],
+      },
+      parsed: {
+        summary: "识别到前端求职倾向",
+        detectedSkills: ["React"],
+        detectedJobTypes: ["前端开发"],
+        detectedCities: ["上海"],
+        education: {
+          university: "同济大学",
+          major: "计算机科学",
+        },
+        confidence: 0.88,
+      },
+      appliedPatch: {
+        skills: ["React"],
+      },
+      profile: {
+        userId: "user-1",
+        university: "同济大学",
+        major: "计算机科学",
+        grade: "",
+        targetIndustries: [],
+        targetCities: ["上海"],
+        skills: ["React"],
+        preferredJobTypes: ["前端开发"],
+        considersPostgraduate: false,
+        considersCivilService: false,
+        resumeData: null,
+      },
+    });
+
+    expect(input.fileName).toBe("resume.txt");
+    expect(result.rewriteSuggestions.keywordSuggestions).toHaveLength(3);
+    expect(result.rewriteSuggestions.sectionSuggestions).toHaveLength(2);
+  });
+
   it("serves profile get and put for authenticated users", async () => {
     setServerAppContextForTesting(createTestAppContext());
 
@@ -297,6 +370,9 @@ describe("api routes", () => {
             async analyzeResumeForJob() {
               throw new Error("not needed");
             },
+            async suggestResumeRewriteForJob() {
+              throw new Error("not needed");
+            },
           },
         },
       ),
@@ -414,6 +490,9 @@ describe("api routes", () => {
               };
             },
             async analyzeResumeForJob() {
+              throw new Error("not needed");
+            },
+            async suggestResumeRewriteForJob() {
               throw new Error("not needed");
             },
           },
@@ -551,6 +630,9 @@ describe("api routes", () => {
                 },
               };
             },
+            async suggestResumeRewriteForJob() {
+              throw new Error("not needed");
+            },
           },
         },
       ),
@@ -612,6 +694,9 @@ describe("api routes", () => {
             async analyzeResumeForJob() {
               throw new Error("not needed");
             },
+            async suggestResumeRewriteForJob() {
+              throw new Error("not needed");
+            },
           },
         },
       ),
@@ -638,6 +723,209 @@ describe("api routes", () => {
 
     const response = await postJobResumeAnalyze(
       new Request("http://localhost/api/jobs/job-1/resume/analyze", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "一份简历文本",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(503);
+  });
+
+  it("returns rewrite suggestions for a resume against a job and only persists parse side effects", async () => {
+    const capturedContexts: Array<{ requestId?: string | null; userId?: string | null; capability?: string | null }> =
+      [];
+    setServerAppContextForTesting(
+      createTestAppContext(
+        {},
+        {
+          aiService: {
+            enabled: true,
+            async generateDailyAdvice() {
+              throw new Error("not needed");
+            },
+            async scoreJobs() {
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 10,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async parseResume(_input, context) {
+              capturedContexts.push(context ?? {});
+              return {
+                parsed: {
+                  summary: "识别到前端求职倾向",
+                  detectedSkills: ["React"],
+                  detectedJobTypes: ["前端开发"],
+                  detectedCities: ["上海"],
+                  education: {
+                    university: "同济大学",
+                    major: "计算机科学",
+                  },
+                  confidence: 0.84,
+                },
+                patch: {
+                  skills: ["React"],
+                  preferredJobTypes: ["前端开发"],
+                  targetCities: ["上海"],
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 17,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async diagnoseResume() {
+              throw new Error("not needed");
+            },
+            async analyzeResumeForJob() {
+              throw new Error("not needed");
+            },
+            async suggestResumeRewriteForJob(_input, context) {
+              capturedContexts.push(context ?? {});
+              return {
+                rewriteSuggestions: {
+                  version: "v1",
+                  generatedAt: new Date("2026-04-17T10:00:00.000Z").toISOString(),
+                  summary: "建议优先改写简历开头、技能区和最贴近岗位的一段项目经历。",
+                  headlineSuggestion: "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                  summarySuggestion: "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                  keywordSuggestions: ["前端开发", "React", "TypeScript"],
+                  sectionSuggestions: [
+                    {
+                      section: "headline",
+                      currentIssue: "当前简历抬头不够贴近目标岗位。",
+                      rewriteGoal: "让招聘方一眼看到投递方向。",
+                      suggestedText: "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                    },
+                    {
+                      section: "summary",
+                      currentIssue: "缺少岗位定向摘要。",
+                      rewriteGoal: "在开头快速说明能力与目标岗位的关联。",
+                      suggestedText: "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                    },
+                  ],
+                  actionChecklist: [
+                    "把岗位关键词提前到简历开头和技能区。",
+                    "优先改写最贴近目标岗位的一段项目经历。",
+                  ],
+                },
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 18,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+          },
+        },
+      ),
+    );
+
+    const response = await postJobResumeRewriteSuggestions(
+      new Request("http://localhost/api/jobs/job-1/resume/rewrite-suggestions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+          fileName: "resume.txt",
+        }),
+      }),
+    );
+
+    const payload = await response.json();
+    expect(response.status).toBe(200);
+    expect(payload.data.rewriteSuggestions.keywordSuggestions).toContain("React");
+    expect(payload.data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
+    expect(payload.data.profile.resumeData.resumeDiagnosis).toBeUndefined();
+    expect(capturedContexts[0]?.capability).toBe("resume_parse");
+    expect(capturedContexts[1]?.capability).toBe("job_resume_rewrite");
+    expect(capturedContexts[1]?.requestId).toBe(response.headers.get("x-request-id"));
+  });
+
+  it("returns 404 when job resume rewrite suggestions target a missing job", async () => {
+    setServerAppContextForTesting(
+      createTestAppContext(
+        {},
+        {
+          aiService: {
+            enabled: true,
+            async generateDailyAdvice() {
+              throw new Error("not needed");
+            },
+            async scoreJobs() {
+              return {
+                items: [],
+                meta: {
+                  provider: "openai",
+                  model: "gpt-test",
+                  promptVersion: "v1",
+                  latencyMs: 8,
+                  fallbackUsed: false,
+                  tokenUsage: null,
+                },
+              };
+            },
+            async parseResume() {
+              throw new Error("not needed");
+            },
+            async diagnoseResume() {
+              throw new Error("not needed");
+            },
+            async analyzeResumeForJob() {
+              throw new Error("not needed");
+            },
+            async suggestResumeRewriteForJob() {
+              throw new Error("not needed");
+            },
+          },
+        },
+      ),
+    );
+
+    const response = await postJobResumeRewriteSuggestions(
+      new Request("http://localhost/api/jobs/missing-job/resume/rewrite-suggestions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+        },
+        body: JSON.stringify({
+          rawText: "一份简历文本",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 503 when job resume rewrite suggestions service is unavailable", async () => {
+    setServerAppContextForTesting(createTestAppContext());
+
+    const response = await postJobResumeRewriteSuggestions(
+      new Request("http://localhost/api/jobs/job-1/resume/rewrite-suggestions", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -806,6 +1094,9 @@ describe("api routes", () => {
               throw new Error("not needed");
             },
             async analyzeResumeForJob() {
+              throw new Error("not needed");
+            },
+            async suggestResumeRewriteForJob() {
               throw new Error("not needed");
             },
           },

@@ -5,6 +5,8 @@ import {
   aiDailyAdviceResponseSchema,
   aiJobResumeAnalysisRequestSchema,
   aiJobResumeAnalysisResponseSchema,
+  aiJobResumeRewriteSuggestionsRequestSchema,
+  aiJobResumeRewriteSuggestionsResponseSchema,
   aiJobScoringRequestSchema,
   aiJobScoringResponseSchema,
   aiResumeDiagnosisRequestSchema,
@@ -14,6 +16,8 @@ import {
   type AiDailyAdviceRequest,
   type AiJobResumeAnalysisData,
   type AiJobResumeAnalysisRequest,
+  type AiJobResumeRewriteSuggestionsData,
+  type AiJobResumeRewriteSuggestionsRequest,
   type AiJobScore,
   type AiPipelineMeta,
   type AiResumeDiagnosisData,
@@ -54,6 +58,11 @@ export interface AiJobResumeAnalysisResult {
   meta: AiPipelineMeta;
 }
 
+export interface AiJobResumeRewriteSuggestionsResult {
+  rewriteSuggestions: AiJobResumeRewriteSuggestionsData;
+  meta: AiPipelineMeta;
+}
+
 export interface AiServiceClient {
   enabled: boolean;
   generateDailyAdvice(input: AiDailyAdviceRequest, context?: AiServiceRequestContext): Promise<AiDailyAdviceResult>;
@@ -64,6 +73,10 @@ export interface AiServiceClient {
     input: AiJobResumeAnalysisRequest,
     context?: AiServiceRequestContext,
   ): Promise<AiJobResumeAnalysisResult>;
+  suggestResumeRewriteForJob(
+    input: AiJobResumeRewriteSuggestionsRequest,
+    context?: AiServiceRequestContext,
+  ): Promise<AiJobResumeRewriteSuggestionsResult>;
 }
 
 class DisabledAiServiceClient implements AiServiceClient {
@@ -96,6 +109,12 @@ class DisabledAiServiceClient implements AiServiceClient {
   }
 
   async analyzeResumeForJob(_input: AiJobResumeAnalysisRequest): Promise<AiJobResumeAnalysisResult> {
+    throw new Error("AI service is disabled");
+  }
+
+  async suggestResumeRewriteForJob(
+    _input: AiJobResumeRewriteSuggestionsRequest,
+  ): Promise<AiJobResumeRewriteSuggestionsResult> {
     throw new Error("AI service is disabled");
   }
 }
@@ -159,6 +178,19 @@ class HttpAiServiceClient implements AiServiceClient {
     const parsed = aiJobResumeAnalysisResponseSchema.parse(response);
     return {
       analysis: parsed.data,
+      meta: parsed.meta,
+    };
+  }
+
+  async suggestResumeRewriteForJob(
+    input: AiJobResumeRewriteSuggestionsRequest,
+    context?: AiServiceRequestContext,
+  ): Promise<AiJobResumeRewriteSuggestionsResult> {
+    const payload = aiJobResumeRewriteSuggestionsRequestSchema.parse(input);
+    const response = await this.request("/internal/resume/suggest-rewrite-for-job", payload, context);
+    const parsed = aiJobResumeRewriteSuggestionsResponseSchema.parse(response);
+    return {
+      rewriteSuggestions: parsed.data,
       meta: parsed.meta,
     };
   }

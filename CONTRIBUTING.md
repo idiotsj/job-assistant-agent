@@ -54,6 +54,29 @@ pnpm test:ai
 - Python AI 服务：确保 `python -m pytest apps/ai-service/tests` 通过
 - API 契约：确认 `packages/contracts` 类型没有破坏前端调用
 - 接口行为：更新 [backend-api.md](/D:/code/work%20agent/apps/api/docs/backend-api.md)
+- 前端可见能力或联调方式：更新 [frontend-backend-handoff.md](/D:/code/work%20agent/apps/web/docs/frontend-backend-handoff.md)
+
+## Capability Change Rule
+
+如果改动属于“能力更新”，提交前默认检查下面这些文档是否需要同步：
+
+- 公共 API 变化：更新 [backend-api.md](/D:/code/work%20agent/apps/api/docs/backend-api.md)
+- 前端调用方式、页面联调、接口使用说明变化：更新 [frontend-backend-handoff.md](/D:/code/work%20agent/apps/web/docs/frontend-backend-handoff.md)
+- AI service 新增内部能力、环境变量或调用约定变化：更新 [README.md](/D:/code/work%20agent/apps/ai-service/README.md)
+- 契约 shape 变化：确认 `packages/contracts` 与前后端调用层同步
+
+这里的“能力更新”包括但不限于：
+
+- 新增公共接口
+- 新增 AI pipeline 或内部接口
+- 修改响应字段
+- 修改前端联调方式
+- 新增环境变量
+
+默认要求：
+
+- 改代码时一起改文档，不把文档更新留到后续补
+- 合并前完成 GitHub 提交，避免本地能力变更和远端说明脱节
 
 ## PR Scope
 
@@ -112,6 +135,7 @@ pnpm test:ai
 - 是否保留现有 API 响应结构
 - 是否补了测试或至少做了手动验证
 - 是否更新了相关文档
+- 如果是能力更新，是否同步更新了交接文档
 - 是否引入了新的环境变量
 
 ## Future Admin App

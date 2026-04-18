@@ -7,6 +7,7 @@ from app.dependencies import AiServiceRuntime
 from app.pipelines import PipelineContext
 from app.pipelines.daily_advice import run_daily_advice_pipeline
 from app.pipelines.job_resume_analysis import run_job_resume_analysis_pipeline
+from app.pipelines.job_resume_rewrite import run_job_resume_rewrite_pipeline
 from app.pipelines.job_scoring import JobScoreEnhancementResponse, run_job_scoring_pipeline
 from app.pipelines import resume_diagnosis as resume_diagnosis_pipeline
 from app.pipelines.resume_diagnosis import run_resume_diagnosis_pipeline
@@ -19,6 +20,7 @@ from app.providers import (
 from app.repositories import InMemoryAiRunLogRepository
 from app.schemas.daily_advice import DailyAdviceRequest, DailyAdviceResult
 from app.schemas.job_resume_analysis import JobResumeAnalysisRequest, JobResumeAnalysisResult
+from app.schemas.job_resume_rewrite import JobResumeRewriteRequest, JobResumeRewriteSuggestionsResult
 from app.schemas.recommendation import JobScoringRequest
 from app.schemas.resume import ResumeParseRequest, ResumeParseResponseData
 from app.schemas.resume_diagnosis import ResumeDiagnosisRequest, ResumeDiagnosisResult
@@ -58,6 +60,7 @@ def build_runtime(
             openai_model_resume_parse="gpt-test-resume",
             openai_model_resume_diagnosis="gpt-test-diagnosis",
             openai_model_job_resume_analysis="gpt-test-job-analysis",
+            openai_model_job_resume_rewrite="gpt-test-job-rewrite",
             openai_model_job_scoring="gpt-test-jobs",
             openai_model_daily_advice="gpt-test-daily",
         ),
@@ -528,6 +531,209 @@ def test_job_resume_analysis_pipeline_falls_back_when_provider_fails() -> None:
     assert result.meta.fallbackUsed is True
     assert result.data.actionPlan.nextSteps
     assert repository.entries[0].error_json["type"] == "object"
+
+
+def test_job_resume_rewrite_pipeline_uses_provider_result_and_logs_full_payload() -> None:
+    repository = InMemoryAiRunLogRepository(log_mode="full")
+    runtime = build_runtime(
+        SuccessProvider(
+            {
+                "job_resume_rewrite": JobResumeRewriteSuggestionsResult.model_validate(
+                    {
+                        "version": "v1",
+                        "generatedAt": "2026-04-17T11:00:00.000Z",
+                        "summary": "建议优先改写简历开头、技能区和最贴近岗位的一段项目经历。",
+                        "headlineSuggestion": "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                        "summarySuggestion": "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                        "keywordSuggestions": ["前端开发", "React", "TypeScript"],
+                        "sectionSuggestions": [
+                            {
+                                "section": "headline",
+                                "currentIssue": "当前简历抬头不够贴近目标岗位。",
+                                "rewriteGoal": "让招聘方一眼看到投递方向。",
+                                "suggestedText": "前端开发候选人 | 上海 | React 项目经验与岗位关键词对齐",
+                            },
+                            {
+                                "section": "summary",
+                                "currentIssue": "缺少岗位定向摘要。",
+                                "rewriteGoal": "在开头快速说明能力与目标岗位的关联。",
+                                "suggestedText": "聚焦前端开发方向，已具备 React 等基础能力，希望在上海参与互联网业务场景下的页面与功能建设。",
+                            },
+                        ],
+                        "actionChecklist": [
+                            "把岗位关键词提前到简历开头和技能区。",
+                            "优先改写最贴近目标岗位的一段项目经历。",
+                        ],
+                    }
+                )
+            }
+        ),
+        repository,
+    )
+
+    result = asyncio.run(
+        run_job_resume_rewrite_pipeline(
+            JobResumeRewriteRequest.model_validate(
+                {
+                    "rawText": "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+                    "parsedResume": {
+                        "summary": "识别到前端求职倾向",
+                        "detectedSkills": ["React"],
+                        "detectedJobTypes": ["前端开发"],
+                        "detectedCities": ["上海"],
+                        "education": {
+                            "university": "同济大学",
+                            "major": "计算机科学",
+                        },
+                        "confidence": 0.88,
+                    },
+                    "profile": {
+                        "userId": "user-1",
+                        "targetIndustries": ["互联网"],
+                        "targetCities": ["上海"],
+                        "skills": ["React"],
+                        "preferredJobTypes": ["前端开发"],
+                    },
+                    "job": {
+                        "id": "job-1",
+                        "title": "前端开发实习生",
+                        "companyId": "company-1",
+                        "companyName": "星河科技",
+                        "companyIndustry": "互联网",
+                        "workLocation": "上海",
+                        "tags": ["前端"],
+                        "requiredSkills": ["React", "TypeScript"],
+                        "description": "负责页面开发",
+                        "isFeatured": True,
+                        "deadline": "2026-04-20T00:00:00.000Z",
+                        "publishedAt": "2026-04-10T00:00:00.000Z",
+                        "popularity": 88,
+                    },
+                }
+            ),
+            runtime,
+            PipelineContext(request_id="req-job-rewrite-1", user_id="user-1"),
+        )
+    )
+
+    assert result.data.keywordSuggestions == ["前端开发", "React", "TypeScript"]
+    assert result.meta.provider == "openai"
+    assert result.meta.fallbackUsed is False
+    assert repository.entries[0].capability == "job_resume_rewrite"
+    assert repository.entries[0].input_json["rawText"]["redacted"] is True
+    assert repository.entries[0].input_json["parsedResume"]["redacted"] is True
+
+
+def test_job_resume_rewrite_pipeline_falls_back_when_provider_fails() -> None:
+    repository = InMemoryAiRunLogRepository(log_mode="minimal")
+    runtime = build_runtime(FailingProvider(), repository)
+
+    result = asyncio.run(
+        run_job_resume_rewrite_pipeline(
+            JobResumeRewriteRequest.model_validate(
+                {
+                    "rawText": "熟悉 React，希望做前端开发。",
+                    "parsedResume": {
+                        "summary": "识别到前端方向",
+                        "detectedSkills": ["React"],
+                        "detectedJobTypes": ["前端开发"],
+                        "detectedCities": [],
+                        "education": {
+                            "university": None,
+                            "major": None,
+                        },
+                        "confidence": 0.52,
+                    },
+                    "profile": {
+                        "userId": "user-2",
+                        "targetIndustries": ["互联网"],
+                        "targetCities": ["上海"],
+                        "skills": ["React"],
+                        "preferredJobTypes": ["前端开发"],
+                    },
+                    "job": {
+                        "id": "job-2",
+                        "title": "前端开发工程师",
+                        "companyId": "company-2",
+                        "companyName": "流光互娱",
+                        "companyIndustry": "互联网",
+                        "workLocation": "上海",
+                        "tags": ["前端"],
+                        "requiredSkills": ["React", "TypeScript"],
+                        "description": "活动页面开发",
+                        "isFeatured": False,
+                        "deadline": "2026-04-25T00:00:00.000Z",
+                        "publishedAt": "2026-04-09T00:00:00.000Z",
+                        "popularity": 70,
+                    },
+                }
+            ),
+            runtime,
+            PipelineContext(request_id="req-job-rewrite-2", user_id="user-2"),
+        )
+    )
+
+    assert result.meta.provider == "rule-based"
+    assert result.meta.fallbackUsed is True
+    assert len(result.data.keywordSuggestions) >= 3
+    assert len(result.data.sectionSuggestions) >= 2
+    assert repository.entries[0].error_json["type"] == "object"
+
+
+def test_job_resume_rewrite_pipeline_fallback_handles_sparse_job_keywords() -> None:
+    repository = InMemoryAiRunLogRepository(log_mode="minimal")
+    runtime = build_runtime(FailingProvider(), repository)
+
+    result = asyncio.run(
+        run_job_resume_rewrite_pipeline(
+            JobResumeRewriteRequest.model_validate(
+                {
+                    "rawText": "希望寻找一份合适的岗位。",
+                    "parsedResume": {
+                        "summary": "经历信息较少",
+                        "detectedSkills": [],
+                        "detectedJobTypes": [],
+                        "detectedCities": [],
+                        "education": {
+                            "university": None,
+                            "major": None,
+                        },
+                        "confidence": 0.31,
+                    },
+                    "profile": {
+                        "userId": "user-3",
+                        "targetIndustries": [],
+                        "targetCities": [],
+                        "skills": [],
+                        "preferredJobTypes": [],
+                    },
+                    "job": {
+                        "id": "job-3",
+                        "title": "运营",
+                        "companyId": "company-3",
+                        "companyName": "示例公司",
+                        "companyIndustry": "",
+                        "workLocation": "",
+                        "tags": [],
+                        "requiredSkills": [],
+                        "description": "",
+                        "isFeatured": False,
+                        "deadline": None,
+                        "publishedAt": "2026-04-17T00:00:00.000Z",
+                        "popularity": 0,
+                    },
+                }
+            ),
+            runtime,
+            PipelineContext(request_id="req-job-rewrite-3", user_id="user-3"),
+        )
+    )
+
+    assert result.meta.provider == "rule-based"
+    assert result.meta.fallbackUsed is True
+    assert result.data.keywordSuggestions[0] == "运营"
+    assert len(result.data.keywordSuggestions) >= 3
+    assert "项目经历" in result.data.keywordSuggestions
 
 
 def test_daily_advice_pipeline_uses_provider_result() -> None:

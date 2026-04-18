@@ -136,6 +136,7 @@
 - `GET /api/jobs`
 - `GET /api/jobs/:id`
 - `POST /api/jobs/:id/resume/analyze`
+- `POST /api/jobs/:id/resume/rewrite-suggestions`
 - `GET /api/companies`
 - `GET /api/companies/:id`
 - `GET /api/cases`
@@ -267,6 +268,52 @@
 - 如果 `apps/api` 无法连接 `apps/ai-service`，接口返回 `503`
 - 如果 `apps/ai-service` 可达但 provider 失败，内部 pipeline 会回退到规则版岗位分析，公共接口仍返回可用结果
 
+### `POST /api/jobs/:id/resume/rewrite-suggestions`
+
+- 说明：执行一次“读取岗位详情 + 解析简历 + 岗位定向改写建议”的同步流程，回答“要投这个岗位，这份简历应该优先改哪里、怎么改”
+- 鉴权：需要
+
+请求体：
+
+```json
+{
+  "rawText": "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+  "fileName": "resume.txt"
+}
+```
+
+响应中的 `data` 包含：
+
+- `rewriteSuggestions`：岗位定向改写建议结果
+- `parsed`：本次生成建议前置使用的最新结构化解析结果
+- `appliedPatch`：本次根据简历安全写回的保守画像补丁
+- `profile`：写回后的最新画像
+
+`rewriteSuggestions` 的固定结构：
+
+- `version`
+- `generatedAt`
+- `summary`
+- `headlineSuggestion`
+- `summarySuggestion`
+- `keywordSuggestions`
+- `sectionSuggestions`
+  - `section`
+  - `currentIssue`
+  - `rewriteGoal`
+  - `suggestedText`
+- `actionChecklist`
+
+行为边界：
+
+- 这是“定向改写建议”接口，不返回整份自动改写后的简历
+- 每次请求都必须传 `rawText`，第一版不支持只基于缓存简历生成建议
+- 接口会刷新 `profile.resumeData.parsedResume`，并应用保守画像补丁
+- 本次改写建议结果不持久化、不保留历史列表
+- 如果岗位不存在，接口返回 `404`
+- 如果 `apps/api` 无法连接 `apps/ai-service`，接口返回 `503`
+- 如果 `apps/ai-service` 可达但 provider 失败，内部 pipeline 会回退到规则版建议，公共接口仍返回可用结果
+
 ## 3.1 内部 AI 服务协作
 
 当前仓库新增了内部 Python 服务：
@@ -279,6 +326,7 @@
 - 简历结构化解析：`POST /internal/resume/parse`
 - 通用简历诊断：`POST /internal/resume/diagnose`
 - 岗位定向简历分析：`POST /internal/resume/analyze-for-job`
+- 岗位定向改写建议：`POST /internal/resume/suggest-rewrite-for-job`
 
 说明：
 
