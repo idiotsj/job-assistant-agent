@@ -323,9 +323,122 @@ apps/web/src/features/jobs/
   - 已生成最终可投递简历
 - 这类 AI 文案交互必须持续强调“辅助改写建议”，而不是“系统已经替你改完”。
 
+### 6.8 岗位详情页作为第四个标准模板
+
+岗位详情页本体也不应继续维持单文件大页，而应把“详情同步、空态判断、抽屉联动、展示分区”拆开：
+
+```text
+apps/web/src/features/jobs/
+├─ job-detail-page.tsx
+├─ detail/
+│  ├─ hooks/
+│  │  └─ use-job-detail-page.ts
+│  ├─ sections/
+│  │  ├─ job-detail-page-intro.tsx
+│  │  ├─ job-detail-status-strip.tsx
+│  │  ├─ job-detail-empty-state.tsx
+│  │  ├─ job-detail-hero-section.tsx
+│  │  ├─ job-detail-main-section.tsx
+│  │  └─ job-detail-sidebar-section.tsx
+│  ├─ types.ts
+│  └─ utils.ts
+```
+
+岗位详情页模板的核心约束：
+
+- `job-detail-page.tsx` 只负责区块编排和与 `JobAnalysisDrawer` 的组合，不在页面层堆接口、副作用和空态分支。
+- `use-job-detail-page.ts` 统一管理：
+  - demo 详情与 live 详情切换
+  - 首次进入非 demo 岗位时的 loading 态
+  - `404` / 同步失败 / 成功提示
+  - 分析抽屉开关
+- 对非 demo 岗位，页面首次进入时必须先展示正式 loading 态，而不是先闪出“空详情”再切成真实结果。
+- 如果 demo 岗位切 live 失败，允许继续保留 demo 详情，但必须显式提示当前 live 同步失败，不能静默装作同步成功。
+- `sections/*` 继续只接收 props，不自己请求接口，也不各自持有新的业务真相源。
+
+### 6.9 岗位列表页作为第五个标准模板
+
+岗位列表页也不应继续维持“筛选、分页、来源状态、卡片渲染全堆在一个文件里”的做法，而应和首页、简历页、岗位详情页保持同一套结构：
+
+```text
+apps/web/src/features/jobs/
+├─ jobs-page.tsx
+├─ list/
+│  ├─ hooks/
+│  │  └─ use-jobs-page.ts
+│  ├─ sections/
+│  │  ├─ jobs-page-intro.tsx
+│  │  ├─ jobs-status-strip.tsx
+│  │  ├─ jobs-summary-section.tsx
+│  │  ├─ jobs-filters-section.tsx
+│  │  └─ jobs-results-section.tsx
+│  ├─ types.ts
+│  └─ utils.ts
+```
+
+岗位列表页模板的核心约束：
+
+- `jobs-page.tsx` 只负责页面编排，不在页面层直接堆筛选状态、分页切换、实时同步和卡片内的展示推导。
+- `use-jobs-page.ts` 统一管理：
+  - demo / live 列表切换
+  - 筛选草稿与已应用筛选
+  - 分页切换
+  - 成功提示与错误提示
+  - 列表 summary card 的衍生 view model
+- 筛选器 section 只负责输入与按钮，不自己决定何时请求接口。
+- 结果列表 section 只负责卡片、空态和分页 UI，不自己请求接口，也不自己计算 demo 数据。
+- 岗位列表页必须显式告诉用户当前展示的是：
+  - `demo`
+  - `live`
+  - `error but keeping current result`
+- 如果 live 同步失败，允许保留当前已展示的结果，但必须保留明确错误提示；不能静默把失败当成成功。
+- 筛选草稿和已应用筛选要分开维护，避免后续增加更多筛选条件时页面状态互相覆盖，提升多人维护时的可读性和可扩展性。
+
+### 6.10 用户画像页作为第六个标准模板
+
+用户画像页也不应继续维持“加载登录态、取画像、编辑表单、推荐标签、右侧摘要全堆在一个文件里”的方式，而应继续按统一结构拆开：
+
+```text
+apps/web/src/features/profile/
+├─ profile-page.tsx
+├─ hooks/
+│  └─ use-profile-page.ts
+├─ sections/
+│  ├─ profile-page-intro.tsx
+│  ├─ profile-status-strip.tsx
+│  ├─ profile-loading-state.tsx
+│  ├─ profile-auth-prompt.tsx
+│  ├─ profile-form-section.tsx
+│  ├─ profile-summary-section.tsx
+│  ├─ profile-suggestions-section.tsx
+│  └─ profile-resume-cache-section.tsx
+├─ tag-editor.tsx
+├─ types.ts
+└─ utils.ts
+```
+
+用户画像页模板的核心约束：
+
+- `profile-page.tsx` 只负责根据 `loading / unauthenticated / ready` 做区块编排，不在页面层直接堆整套表单和接口调用。
+- `use-profile-page.ts` 统一管理：
+  - 登录态下的画像同步
+  - 保存动作
+  - 文本字段、标签字段、开关字段的更新
+  - 完整度统计
+  - 推荐补全标签
+  - `resumeData` 是否存在的状态说明
+- 画像页必须继续显式区分：
+  - 登录恢复中
+  - 游客态
+  - 已登录但画像读取失败、当前回落为空画像草稿
+  - 已登录且可编辑
+- `TagEditor` 这类局部交互组件可以保留在 feature 内复用，但不能反过来持有页面级业务真相源。
+- 画像页展示的字段必须和后端 `UserProfile` 契约一致，不在前端自创另一套画像模型。
+- 后续即使继续补 onboarding、简历自动补全回显或更细的推荐解释，也优先沿 `hooks + sections + types/utils` 扩展，不回退成单文件大页。
+
 ---
 
-## 7. 当前实现对齐状态 (2026-04-18)
+## 7. 当前实现对齐状态 (2026-04-22)
 
 以下内容用于帮助前端继续在统一视觉语言下推进，而不是重复从零判断“现在做到哪了”。
 
@@ -344,6 +457,7 @@ apps/web/src/features/jobs/
   - 登录页 `/login`
   - 注册页 `/register`
   - 用户画像页 `/profile`
+  - 用户画像页已按 `page + hook + sections + types/utils` 重构
   - 基于 `GET /api/auth/me` 的全局会话恢复
   - 侧边栏退出登录入口
 - 已补齐时间线与独立频道页面：
@@ -360,7 +474,12 @@ apps/web/src/features/jobs/
   - 岗位详情页 `/jobs/[id]`
   - 城市 / 行业 / 关键词 / `featuredOnly` 筛选
   - 正式分页、筛选空态和详情 `404` 空态
+  - 岗位列表页已按 `page + hook + sections + types/utils` 重构
+  - 筛选草稿与已应用筛选已分开维护
+  - 列表页的 demo / live 来源、同步成功提示和失败提示已显式收口
   - 详情页分析抽屉登录门禁与明确错误提示
+  - 岗位详情页已按 `hook + sections + types/utils` 重构
+  - 非 demo 岗位首次进入时已补正式 loading 态，避免空态闪烁
   - 岗位分析抽屉已按 `hook + sections + types/utils` 重构
   - 岗位分析 / 改写建议已支持模块级 `demo / live / mixed` 显式状态
   - 原文变更后的 live 结果过期提示
@@ -439,17 +558,25 @@ apps/web/src/features/jobs/
   - 岗位详情页 `/jobs/[id]`
   - 城市 / 行业 / 关键词 / `featuredOnly` 筛选
   - 分页、筛选空态和岗位详情 `404` 空态
+  - 岗位列表页已按统一结构拆成 `page + hook + sections + types/utils`
+  - 列表页的筛选草稿与已应用筛选已拆开管理，方便继续扩条件
+  - 列表页的 demo / live 状态、同步成功提示和失败提示已统一收口
   - “未登录不可分析”的正式门禁与提示
+  - 岗位详情页已按统一结构拆成 `page + hook + sections + types/utils`
+  - 非 demo 岗位首次进入时的 loading 态已单独处理，不再先闪空态
   - 岗位分析抽屉已按统一结构拆分
   - 分析结果和改写建议已支持模块级 `demo / live / mixed`
   - 原文修改后的结果过期提示
   - “一键采纳”已变成当前抽屉内的采纳预览与复制行为
 - 当前岗位不存在时采用的是详情页内联空态，而不是单独的全局 not-found 页面。
-- 岗位详情页本体仍然相对偏大，后续可继续按同样的 `page + hook + sections + types/utils` 思路拆开。
+- 岗位列表页后续新增更多筛选项、批量操作或推荐解释时，继续沿用 `list/hooks + list/sections + list/types/utils` 扩展，不要回退成单文件大页。
 
 #### 画像页 `/profile`
 
 - 已完成基础编辑、保存、多标签交互和登录门禁。
+- 已按统一结构拆成 `page + hook + sections + types/utils`。
+- 已把登录恢复态、游客态、可编辑态和错误提示显式拆开。
+- 已把画像摘要、推荐补全标签和简历缓存状态拆成独立 section，便于后续多人并行维护。
 - 还没有把“首次使用引导”做成完整 onboarding 流程。
 - 还没有把 `resume/parse` 的自动补全结果和画像页做正式串联。
 
