@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ElementType } from "react";
-import { BookOpen, Building2, ChevronRight, GraduationCap, Landmark, UserRound } from "lucide-react";
+import { BookOpen, Building2, ChevronRight, GraduationCap, Landmark, Mic, UserRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ const DEFAULT_LINKS: KnowledgeTreeLink[] = [
   { label: "个人中心", href: "/profile", icon: UserRound },
   { label: "学生案例", href: "/cases", icon: BookOpen },
   { label: "就业广场", href: "/jobs", icon: Building2 },
+  { label: "面试模拟", href: "/interview", icon: Mic },
   { label: "升学考研", href: "/postgraduate", icon: GraduationCap },
   { label: "考公之路", href: "/civil-service", icon: Landmark },
 ];

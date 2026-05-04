@@ -29,19 +29,19 @@
 - 后端主网关：`apps/api`
 - 内部 AI 服务：`apps/ai-service`
 - 前端当前路由结构：
-  - `(dashboard)`：`/`、`/resume`、`/jobs`、`/jobs/[id]`、`/companies`、`/companies/[id]`、`/events`、`/cases`、`/schedule`、`/profile`、`/postgraduate`、`/civil-service`
+  - `(dashboard)`：`/`、`/resume`、`/jobs`、`/jobs/[id]`、`/companies`、`/companies/[id]`、`/events`、`/cases`、`/schedule`、`/profile`、`/postgraduate`、`/civil-service`、`/interview`
   - `(auth)`：`/login`、`/register`
 - 前端当前壳层现状：
   - 根布局只负责 `AuthProvider`
-  - `DashboardShell + BrandTopBar` 已接到 `(dashboard)` 路由组
+  - `DashboardShell + BrandTopBar` 已接到 `(dashboard)` 路由组，并补上顶栏身份操作
   - `ConversationShell` 组件已存在，但尚未接入正式页面路由
 
 ## 3. 总览面板
 
 | 模块 | 后端状态 | 前端状态 | 当前结论 | 下一步 |
 | --- | --- | --- | --- | --- |
-| 登录 / 注册 / 当前用户 | ready | doing | `/login`、`/register` 和 `GET /api/auth/me` 会话恢复已落地，但新主壳层里的退出入口还未统一 | 把退出登录和身份操作补进当前主流顶栏 / 身份区 |
-| 首页推荐 | ready | doing | 首页和仪表盘壳层都已存在，可继续按新母版收口模块编排与 live/demo 提示 | 收口首页任务卡、推荐区和真实状态提示 |
+| 登录 / 注册 / 当前用户 | ready | doing | `/login`、`/register`、`GET /api/auth/me` 和新顶栏身份区已接上，认证闭环已基本打通 | 继续补更细的身份态文案和后续对话页复用 |
+| 首页推荐 | ready | doing | 首页已重排为主任务驱动的主舞台结构，并保留 demo/live 明示 | 继续细化行业热点承载与更多真实块映射 |
 | 用户画像 | ready | doing | `/profile` 已可读取并保存核心字段，但还未完全对齐新版个人中心母版 | 继续补阶段任务、趋势区和更完整的身份信息编排 |
 | 岗位列表 / 详情 | ready | doing | 列表页、详情页都已存在，可继续增强筛选、信息块和跳转链路 | 收口筛选、空态、详情信息分层 |
 | 岗位定向分析 | ready | doing | 分析能力已接入当前页面流，但还没有迁入正式对话工作区 | 为后续 AI 对话工作区预留更清晰的承载方式 |
@@ -53,19 +53,20 @@
 | 日程 | ready | doing | `/schedule` 已落地 `page + hook + sections` 结构，并支持聚合与编辑 | 继续补来源区分、周视图和更多状态细节 |
 | 考研频道 | ready | doing | 独立频道页已存在，可继续对齐新版频道壳层 | 补频道导流、解释卡和首页联动 |
 | 考公频道 | ready | doing | 独立频道页已存在，可继续对齐新版频道壳层 | 补频道导流、解释卡和首页联动 |
+| 面试模拟 | planned | doing | `/interview` 已作为正式占位入口接入知识树和首页快捷入口 | 后续承接真实面试训练、AI 建议与复盘总结 |
 
 ## 4. 当前优先级清单
 
 ### P0：必须先打通
 
-- [ ] 新主壳层补齐退出登录入口与身份操作区，不再只留在旧侧栏组件里
+- [x] 新主壳层补齐退出登录入口与身份操作区，不再只留在旧侧栏组件里
 - [ ] 个人中心继续对齐新版母版，把已有画像能力组织成更完整的用户阶段页
-- [ ] 首页真实数据切换时，明确提示当前是 `live` 还是 `demo`
+- [x] 首页真实数据切换时，明确提示当前是 `live` 还是 `demo`
 - [ ] AI 页面统一处理 `401` / `404` / `503`
 
 ### P1：主链路体验
 
-- [ ] 首页分区继续按后端结构展示，不打平成统一 feed
+- [x] 首页分区继续按后端结构展示，不打平成统一 feed
 - [ ] 岗位列表支持真实筛选和空态
 - [ ] 岗位详情页补完整信息块
 - [ ] 简历诊断页补“最新解析 / 自动补全字段 / 行动清单”状态说明

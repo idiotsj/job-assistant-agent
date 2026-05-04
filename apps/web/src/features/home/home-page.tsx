@@ -2,11 +2,9 @@
 
 import { useHomeDashboardData } from "./hooks/use-home-dashboard-data";
 import { HomeAuthPrompt } from "./sections/home-auth-prompt";
-import { HomeHeroSection } from "./sections/home-hero-section";
-import { HomeMetricsSection } from "./sections/home-metrics-section";
-import { HomeOverviewSection } from "./sections/home-overview-section";
 import { HomePageIntro } from "./sections/home-page-intro";
-import { HomeRecommendationsSection } from "./sections/home-recommendations-section";
+import { HomeSecondaryGridSection } from "./sections/home-secondary-grid-section";
+import { HomeStageSection } from "./sections/home-stage-section";
 import { HomeStatusStrip } from "./sections/home-status-strip";
 
 export function HomePage() {
@@ -14,41 +12,29 @@ export function HomePage() {
 
   return (
     <div className="page-stack">
-      <HomePageIntro status={status} onSync={() => void actions.syncDashboard("manual")} />
-      {status.sessionStatus === "unauthenticated" ? <HomeAuthPrompt /> : null}
       <HomeStatusStrip
         message={status.message}
         messageTone={status.messageTone}
         errorMessage={status.errorMessage}
       />
-      <HomeHeroSection
-        displayUser={data.displayUser}
-        heroAdvice={data.heroAdvice}
-        profile={data.profile}
-        featuredJobs={data.featuredJobs}
-        todayContentMode={status.modes.todayContent}
-      />
-      <HomeMetricsSection
-        topRecommendation={data.topRecommendation}
-        featuredJobs={data.featuredJobs}
-        timelinePreview={data.timelinePreview}
-      />
-      <HomeRecommendationsSection
-        recommendation={data.recommendation}
+      <HomeStageSection
+        stageTask={data.stageTask}
+        quickLinks={data.quickLinks}
+        spotlightJobs={data.spotlightJobs}
         recommendationMode={status.modes.recommendation}
       />
-      <HomeOverviewSection
-        recommendation={data.recommendation}
-        recommendationMode={status.modes.recommendation}
+      <HomePageIntro status={status} onSync={() => void actions.syncDashboard("manual")} />
+      {status.sessionStatus === "unauthenticated" ? <HomeAuthPrompt /> : null}
+      <HomeSecondaryGridSection
         featuredJobs={data.featuredJobs}
-        todayContentMode={status.modes.todayContent}
+        featuredEvents={data.featuredEvents}
         featuredCompany={data.featuredCompany}
-        profile={data.profile}
-        profileMode={status.modes.profile}
-        profileNeedsAttention={data.profileNeedsAttention}
         timelinePreview={data.timelinePreview}
-        scheduleMode={status.modes.schedule}
+        profile={data.profile}
+        profileNeedsAttention={data.profileNeedsAttention}
         actionChecklist={data.actionChecklist}
+        insightHighlights={data.insightHighlights}
+        modes={status.modes}
       />
     </div>
   );

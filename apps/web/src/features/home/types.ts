@@ -11,6 +11,13 @@ export type HomeMessageTone = "info" | "success";
 export type HomeSessionStatus = "loading" | "authenticated" | "unauthenticated";
 export type HomeSyncStatus = "idle" | "loading";
 export type HomeSyncReason = "auto" | "manual";
+export type HomeQuickLinkId =
+  | "profile"
+  | "jobs"
+  | "interview"
+  | "cases"
+  | "postgraduate"
+  | "civil-service";
 export type HomeViewState =
   | "loading"
   | "ready-demo"
@@ -46,6 +53,31 @@ export interface HomeDashboardData {
   topRecommendation: HomeRecommendation["jobs"][number] | null;
   actionChecklist: string[];
   profileNeedsAttention: boolean;
+  stageTask: {
+    stageLabel: string;
+    title: string;
+    explanation: string;
+    benefitTips: string[];
+    primaryActionHref: string;
+    primaryActionLabel: string;
+    secondaryActionHref: string;
+    secondaryActionLabel: string;
+  };
+  quickLinks: Array<{
+    id: HomeQuickLinkId;
+    label: string;
+    description: string;
+    href: string;
+  }>;
+  spotlightJobs: HomeRecommendation["jobs"];
+  featuredEvents: HomeRecommendation["events"];
+  insightHighlights: Array<{
+    id: string;
+    title: string;
+    body: string;
+    href?: string;
+    actionLabel?: string;
+  }>;
 }
 
 export interface HomeDashboardStatus {

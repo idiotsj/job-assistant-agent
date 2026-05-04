@@ -18,7 +18,7 @@ import { getHomeRecommendations } from "@/lib/api/recommendation";
 import { getScheduleTimeline } from "@/lib/api/schedule";
 
 import type { HomeDashboardController, HomeDashboardState, HomeSyncReason } from "../types";
-import { getHomeViewState, summarizeHomeModes } from "../utils";
+import { buildHomeStageTask, getHomeViewState, summarizeHomeModes } from "../utils";
 
 const initialState: HomeDashboardState = {
   profile: demoProfile,
@@ -195,6 +195,45 @@ export function useHomeDashboardData(): HomeDashboardController {
       ? `把“${timelinePreview[0].title}”加入今天的跟进清单，避免错过时间节点。`
       : "把最近一个最强项目改成结果导向版本，再去跑一次简历体检。",
   ];
+  const stageTask = buildHomeStageTask({
+    profileComplete: !profileNeedsAttention,
+    topRecommendationTitle: topRecommendation?.title ?? null,
+    featuredJobTitle: featuredJobs[0]?.title ?? null,
+    timelineTitle: timelinePreview[0]?.title ?? null,
+  });
+  const quickLinks = [
+    { id: "profile" as const, label: "个人中心", description: "完善画像与身份资料", href: "/profile" },
+    { id: "jobs" as const, label: "就业广场", description: "查看岗位与企业机会", href: "/jobs" },
+    { id: "interview" as const, label: "面试模拟", description: "提前熟悉训练模块", href: "/interview" },
+    { id: "cases" as const, label: "学生案例", description: "查看相似路径样本", href: "/cases" },
+    { id: "postgraduate" as const, label: "升学考研", description: "切换到升学建议频道", href: "/postgraduate" },
+    { id: "civil-service" as const, label: "考公之路", description: "切换到考公建议频道", href: "/civil-service" },
+  ];
+  const insightHighlights =
+    recommendation.cases.length > 0 || recommendation.events.length > 0
+      ? [
+          ...recommendation.cases.slice(0, 1).map((item) => ({
+            id: `case-${item.id}`,
+            title: item.title,
+            body: item.reason,
+            href: "/cases",
+            actionLabel: "去看案例",
+          })),
+          ...recommendation.events.slice(0, 1).map((item) => ({
+            id: `event-${item.id}`,
+            title: item.title,
+            body: item.reason,
+            href: "/events",
+            actionLabel: "去看活动",
+          })),
+        ]
+      : [
+          {
+            id: "insight-empty",
+            title: "行业热点 / 政策解读即将进入首页右侧区",
+            body: "当前仓库还没有独立的热点数据源，这一块先明确保留为空态或弱承载区，不伪造“实时资讯”。",
+          },
+        ];
 
   const modeSummary = summarizeHomeModes(state.modes);
 
@@ -211,6 +250,11 @@ export function useHomeDashboardData(): HomeDashboardController {
       topRecommendation,
       actionChecklist,
       profileNeedsAttention,
+      stageTask,
+      quickLinks,
+      spotlightJobs: recommendation.jobs.slice(0, 3),
+      featuredEvents: recommendation.events.slice(0, 2),
+      insightHighlights,
     },
     status: {
       sessionStatus,

@@ -38,10 +38,9 @@ export function HomePageIntro({ status, onSync }: HomePageIntroProps) {
   return (
     <div className="page-header">
       <div>
-        <h1>首页控制中心</h1>
+        <h1>首页同步状态</h1>
         <p>
-          首页现在按“推荐 / 今日内容 / 画像 / 时间线”四个模块分区同步。页面层只负责编排，数据同步、状态计算和
-          demo/live 处理统一收口到 feature hook 里。
+          当前首页已经按推荐、今日内容、画像和时间线四类真实能力重组。这里仅作为同步说明区，主任务舞台和快捷入口仍然是页面首屏重点。
         </p>
       </div>
       <div className="page-header__actions">

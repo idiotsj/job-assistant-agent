@@ -26,7 +26,7 @@ packages/
   - `(dashboard)` 路由组统一使用 `DashboardShell + BrandTopBar`
   - `(auth)` 路由组统一使用独立认证布局
 - 当前已经存在的页面入口不再只有 V1 的三页，而是至少包括：
-  - 仪表盘壳层页面：`/`、`/resume`、`/jobs`、`/jobs/[id]`、`/companies`、`/companies/[id]`、`/events`、`/cases`、`/schedule`、`/profile`、`/postgraduate`、`/civil-service`
+  - 仪表盘壳层页面：`/`、`/resume`、`/jobs`、`/jobs/[id]`、`/companies`、`/companies/[id]`、`/events`、`/cases`、`/schedule`、`/profile`、`/postgraduate`、`/civil-service`、`/interview`
   - 认证壳层页面：`/login`、`/register`
 - `apps/web/src/components/layout/conversation-shell.tsx` 已经作为第二类壳层基座落在组件层，但目前还没有正式挂到独立路由组中。
 - 当前前端代码已具备四类可复用资产：
@@ -36,6 +36,7 @@ packages/
   - `apps/web/src/lib/api/*` 中已经封装好的 API 调用层
 - `packages/contracts/src/*` 中的共享 schema / 类型仍然是前后端联调真相源。
 - 当前页面仍然带有 demo/live 双态兜底和视觉演进性质，不应误解为全部业务流程、壳层编排和产品措辞都已最终定型。
+- 首页当前已经切到“主任务舞台 + 快捷入口 + 次级真实模块”这一轮 V2 结构，`/interview` 也已作为正式占位入口接入导航，但两者都还处于持续收口阶段。
 
 ### 1.3 当前后端状态
 
