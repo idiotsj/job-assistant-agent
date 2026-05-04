@@ -1,4 +1,5 @@
 import { type DbClient, unsafeQuery } from "@/core/db/client";
+import { normalizeDbRow } from "@/core/db/query-helpers";
 import { authUserSchema, authUserWithPasswordSchema, type AuthUser, type AuthUserWithPassword } from "@/modules/auth/schema";
 import { userProfileSchema, type UserProfile } from "@/modules/profile/schema";
 
@@ -34,7 +35,7 @@ export function createAuthRepository(db: DbClient): AuthRepository {
         [id],
       );
 
-      return rows[0] ? authUserSchema.parse(rows[0]) : null;
+      return rows[0] ? authUserSchema.parse(normalizeDbRow(rows[0])) : null;
     },
 
     async getUserWithPasswordByEmail(email) {
@@ -58,7 +59,7 @@ export function createAuthRepository(db: DbClient): AuthRepository {
         [email.toLowerCase()],
       );
 
-      return rows[0] ? authUserWithPasswordSchema.parse(rows[0]) : null;
+      return rows[0] ? authUserWithPasswordSchema.parse(normalizeDbRow(rows[0])) : null;
     },
 
     async createUser(tx, input) {
@@ -86,7 +87,7 @@ export function createAuthRepository(db: DbClient): AuthRepository {
         [input.email.toLowerCase(), input.passwordHash, input.name, input.role ?? "user", input.status ?? "active"],
       );
 
-      return authUserSchema.parse(rows[0]);
+      return authUserSchema.parse(normalizeDbRow(rows[0]));
     },
 
     async createEmptyProfile(tx, userId) {
@@ -127,8 +128,7 @@ export function createAuthRepository(db: DbClient): AuthRepository {
         [userId],
       );
 
-      return userProfileSchema.parse(rows[0]);
+      return userProfileSchema.parse(normalizeDbRow(rows[0]));
     },
   };
 }
-

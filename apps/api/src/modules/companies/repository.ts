@@ -1,5 +1,5 @@
 import { type DbClient, unsafeQuery } from "@/core/db/client";
-import { createWhereBuilder, runPaginatedQuery } from "@/core/db/query-helpers";
+import { createWhereBuilder, normalizeDbRow, runPaginatedQuery } from "@/core/db/query-helpers";
 import { ensureArray } from "@/core/helpers";
 import { type ListResult } from "@/modules/shared/types";
 import { companySchema, type Company, type CompanyListQuery } from "@/modules/companies/schema";
@@ -74,7 +74,7 @@ export function createCompanyRepository(db: DbClient): CompanyRepository {
         [id],
       );
 
-      return rows[0] ? companySchema.parse(rows[0]) : null;
+      return rows[0] ? companySchema.parse(normalizeDbRow(rows[0])) : null;
     },
 
     async listFeatured(limit = 5) {
@@ -89,7 +89,7 @@ export function createCompanyRepository(db: DbClient): CompanyRepository {
         [limit],
       );
 
-      return rows.map((row) => companySchema.parse(row));
+      return rows.map((row) => companySchema.parse(normalizeDbRow(row)));
     },
   };
 }

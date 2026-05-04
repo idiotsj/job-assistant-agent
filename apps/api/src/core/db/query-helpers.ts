@@ -3,6 +3,31 @@ import type { ZodType } from "zod";
 import { type DbClient, unsafeQuery } from "@/core/db/client";
 import type { ListResult } from "@/modules/shared/types";
 
+export function normalizeDbValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeDbValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        normalizeDbValue(item),
+      ]),
+    );
+  }
+
+  return value;
+}
+
+export function normalizeDbRow<T>(row: T): T {
+  return normalizeDbValue(row) as T;
+}
+
 export interface WhereBuilder {
   addRaw(clause: string): void;
   addValue(value: unknown, clauseFactory: (index: number) => string): void;
@@ -80,7 +105,7 @@ export async function runPaginatedQuery<T>({
   );
 
   return {
-    items: rows.map((row) => schema.parse(row)),
+    items: rows.map((row) => schema.parse(normalizeDbRow(row))),
     total: totalRows[0]?.count ?? 0,
   };
 }

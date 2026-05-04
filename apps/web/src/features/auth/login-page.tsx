@@ -106,12 +106,26 @@ export function LoginPage() {
 
         <label className="field-group">
           <span className="field-label">邮箱</span>
-          <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <Input
+            type="email"
+            name="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
         </label>
 
         <label className="field-group">
           <span className="field-label">密码</span>
-          <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          <Input
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
         </label>
 
         <Button size="lg" type="submit" loading={submitting}>

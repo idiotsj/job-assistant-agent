@@ -21,17 +21,21 @@ packages/
 
 ### 1.2 当前前端状态
 
-- `apps/web` 当前已经落了一版可运行的 V1 页面骨架，至少包含：
-  - 首页控制中心：`/`
-  - 简历 AI 体检舱：`/resume`
-  - 岗位与简历双向对齐：`/jobs`
+- `apps/web` 已从旧的单壳层根布局，拆成了按路由组选择壳层的结构：
+  - 根布局 `apps/web/src/app/layout.tsx` 目前只负责挂载 `AuthProvider`
+  - `(dashboard)` 路由组统一使用 `DashboardShell + BrandTopBar`
+  - `(auth)` 路由组统一使用独立认证布局
+- 当前已经存在的页面入口不再只有 V1 的三页，而是至少包括：
+  - 仪表盘壳层页面：`/`、`/resume`、`/jobs`、`/jobs/[id]`、`/companies`、`/companies/[id]`、`/events`、`/cases`、`/schedule`、`/profile`、`/postgraduate`、`/civil-service`
+  - 认证壳层页面：`/login`、`/register`
+- `apps/web/src/components/layout/conversation-shell.tsx` 已经作为第二类壳层基座落在组件层，但目前还没有正式挂到独立路由组中。
 - 当前前端代码已具备四类可复用资产：
   - `apps/web/src/features/*` 中按业务域组织的页面骨架
   - `apps/web/src/components/*` 中的布局和基础 UI 组件
   - `apps/web/next.config.ts` 中的 `/api/*` 代理
   - `apps/web/src/lib/api/*` 中已经封装好的 API 调用层
 - `packages/contracts/src/*` 中的共享 schema / 类型仍然是前后端联调真相源。
-- 当前页面仍然带有演示数据兜底和视觉演示性质，不应误解为全部业务流程都已最终定型。
+- 当前页面仍然带有 demo/live 双态兜底和视觉演进性质，不应误解为全部业务流程、壳层编排和产品措辞都已最终定型。
 
 ### 1.3 当前后端状态
 

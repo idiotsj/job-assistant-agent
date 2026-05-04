@@ -1,4 +1,5 @@
 import { type DbClient, unsafeQuery } from "@/core/db/client";
+import { normalizeDbRow } from "@/core/db/query-helpers";
 import { postgraduateAdviceSchema, type PostgraduateAdvice } from "@/modules/postgraduate/schema";
 
 export interface PostgraduateRepository {
@@ -23,8 +24,7 @@ export function createPostgraduateRepository(db: DbClient): PostgraduateReposito
         `,
       );
 
-      return rows.map((row) => postgraduateAdviceSchema.parse(row));
+      return rows.map((row) => postgraduateAdviceSchema.parse(normalizeDbRow(row)));
     },
   };
 }
-

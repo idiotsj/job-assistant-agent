@@ -1,4 +1,5 @@
 import { type DbClient, unsafeQuery } from "@/core/db/client";
+import { normalizeDbRow } from "@/core/db/query-helpers";
 import { dailyContentSchema, type DailyContent } from "@/modules/daily-content/schema";
 
 export interface DailyContentRepository {
@@ -31,8 +32,7 @@ export function createDailyContentRepository(db: DbClient): DailyContentReposito
         [kind],
       );
 
-      return rows.map((row) => dailyContentSchema.parse(row));
+      return rows.map((row) => dailyContentSchema.parse(normalizeDbRow(row)));
     },
   };
 }
-

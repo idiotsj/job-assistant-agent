@@ -1,4 +1,5 @@
 import { type DbClient, unsafeQuery } from "@/core/db/client";
+import { normalizeDbRow } from "@/core/db/query-helpers";
 import { profileUpdateSchema, userProfileSchema, type ProfileUpdateInput, type UserProfile } from "@/modules/profile/schema";
 
 export interface ProfileRepository {
@@ -33,7 +34,7 @@ export function createProfileRepository(db: DbClient): ProfileRepository {
         [userId],
       );
 
-      return rows[0] ? userProfileSchema.parse(rows[0]) : null;
+      return rows[0] ? userProfileSchema.parse(normalizeDbRow(rows[0])) : null;
     },
 
     async upsert(userId, input) {
@@ -98,8 +99,7 @@ export function createProfileRepository(db: DbClient): ProfileRepository {
         ],
       );
 
-      return userProfileSchema.parse(rows[0]);
+      return userProfileSchema.parse(normalizeDbRow(rows[0]));
     },
   };
 }
-

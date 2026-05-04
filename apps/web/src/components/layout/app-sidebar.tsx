@@ -1,3 +1,15 @@
+/**
+ * Legacy sidebar navigation component.
+ *
+ * This was the primary navigation shell in v1. After the Phase 1 refactor,
+ * navigation moved to BrandTopBar + DashboardShell. This component is kept
+ * as a fallback for:
+ * - Legacy layout testing
+ * - Pages that explicitly opt into the old sidebar pattern
+ * - Reference during migration of individual pages
+ *
+ * @deprecated Prefer DashboardShell for new work.
+ */
 "use client";
 
 import {

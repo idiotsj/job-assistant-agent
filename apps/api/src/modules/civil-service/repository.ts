@@ -1,4 +1,5 @@
 import { type DbClient, unsafeQuery } from "@/core/db/client";
+import { normalizeDbRow } from "@/core/db/query-helpers";
 import { civilServiceAdviceSchema, type CivilServiceAdvice } from "@/modules/civil-service/schema";
 
 export interface CivilServiceRepository {
@@ -23,8 +24,7 @@ export function createCivilServiceRepository(db: DbClient): CivilServiceReposito
         `,
       );
 
-      return rows.map((row) => civilServiceAdviceSchema.parse(row));
+      return rows.map((row) => civilServiceAdviceSchema.parse(normalizeDbRow(row)));
     },
   };
 }
-

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { type DbClient, unsafeQuery } from "@/core/db/client";
+import { normalizeDbRow } from "@/core/db/query-helpers";
 import {
   scheduleCreateInputSchema,
   scheduleItemSchema,
@@ -39,7 +40,7 @@ export function createScheduleRepository(db: DbClient): ScheduleRepository {
         [userId],
       );
 
-      return rows.map((row) => scheduleItemSchema.parse(row));
+      return rows.map((row) => scheduleItemSchema.parse(normalizeDbRow(row)));
     },
 
     async getUserItemById(userId, id) {
@@ -61,7 +62,7 @@ export function createScheduleRepository(db: DbClient): ScheduleRepository {
         [userId, id],
       );
 
-      return rows[0] ? scheduleItemSchema.parse(rows[0]) : null;
+      return rows[0] ? scheduleItemSchema.parse(normalizeDbRow(rows[0])) : null;
     },
 
     async createUserItem(userId, input) {
@@ -93,7 +94,7 @@ export function createScheduleRepository(db: DbClient): ScheduleRepository {
         [id, userId, normalized.title, normalized.startAt, normalized.endAt, normalized.city, normalized.description],
       );
 
-      return scheduleItemSchema.parse(rows[0]);
+      return scheduleItemSchema.parse(normalizeDbRow(rows[0]));
     },
 
     async updateUserItem(userId, id, input) {
@@ -131,7 +132,7 @@ export function createScheduleRepository(db: DbClient): ScheduleRepository {
         [userId, id, merged.title, merged.startAt, merged.endAt, merged.city, merged.description],
       );
 
-      return rows[0] ? scheduleItemSchema.parse(rows[0]) : null;
+      return rows[0] ? scheduleItemSchema.parse(normalizeDbRow(rows[0])) : null;
     },
 
     async deleteUserItem(userId, id) {

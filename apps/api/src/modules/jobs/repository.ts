@@ -1,6 +1,6 @@
 import { ensureArray } from "@/core/helpers";
 import { type DbClient, unsafeQuery } from "@/core/db/client";
-import { createWhereBuilder, runPaginatedQuery } from "@/core/db/query-helpers";
+import { createWhereBuilder, normalizeDbRow, runPaginatedQuery } from "@/core/db/query-helpers";
 import { type ListResult } from "@/modules/shared/types";
 import { jobSchema, type Job, type JobListQuery } from "@/modules/jobs/schema";
 
@@ -79,7 +79,7 @@ export function createJobRepository(db: DbClient): JobRepository {
         [id],
       );
 
-      return rows[0] ? jobSchema.parse(rows[0]) : null;
+      return rows[0] ? jobSchema.parse(normalizeDbRow(rows[0])) : null;
     },
   };
 }
