@@ -13,6 +13,7 @@ import { GET as getEvents } from "@/routes/events/route";
 import { GET as getJobs } from "@/routes/jobs/route";
 import { POST as postJobResumeAnalyze } from "@/routes/jobs/[id]/resume/analyze/route";
 import { POST as postJobResumeRewriteSuggestions } from "@/routes/jobs/[id]/resume/rewrite-suggestions/route";
+import { POST as postJobResumeRewriteTask } from "@/routes/jobs/[id]/resume/rewrite-suggestions/tasks/route";
 import { GET as getPostgraduateAdvice } from "@/routes/postgraduate/advice/route";
 import { GET as getProfile, PUT as putProfile } from "@/routes/profile/route";
 import { POST as postProfileResumeDiagnose } from "@/routes/profile/resume/diagnose/route";
@@ -20,6 +21,7 @@ import { POST as postProfileResumeParse } from "@/routes/profile/resume/parse/ro
 import { GET as getRecommendHome } from "@/routes/recommend/home/route";
 import { DELETE as deleteScheduleItem, PUT as putScheduleItem } from "@/routes/schedule/[id]/route";
 import { GET as getSchedule, POST as postSchedule } from "@/routes/schedule/route";
+import { GET as getAiTask, GET_LIST as getAiTasks } from "@/routes/ai/tasks/route";
 import {
   jobResumeAnalyzeInputSchema,
   jobResumeAnalyzeResultSchema,
@@ -1020,6 +1022,72 @@ describe("api routes", () => {
     expect(eventsPayload.data[0].city).toBe("上海");
   });
 
+  it("excludes expired jobs from list, home recommendations, and schedule timeline", async () => {
+    setServerAppContextForTesting(
+      createTestAppContext({
+        jobs: [
+          {
+            id: "job-active",
+            title: "有效岗位",
+            companyId: "company-1",
+            companyName: "星河科技",
+            companyIndustry: "互联网",
+            workLocation: "上海",
+            tags: ["前端"],
+            requiredSkills: ["React"],
+            description: "仍可投递。",
+            isFeatured: true,
+            deadline: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+            publishedAt: new Date(Date.now() - 1 * 86_400_000).toISOString(),
+            popularity: 90,
+          },
+          {
+            id: "job-expired",
+            title: "过期岗位",
+            companyId: "company-1",
+            companyName: "星河科技",
+            companyIndustry: "互联网",
+            workLocation: "上海",
+            tags: ["前端"],
+            requiredSkills: ["React"],
+            description: "已经截止。",
+            isFeatured: true,
+            deadline: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+            publishedAt: new Date(Date.now() - 10 * 86_400_000).toISOString(),
+            popularity: 99,
+          },
+        ],
+      }),
+    );
+
+    const jobsResponse = await getJobs(new Request("http://localhost/api/jobs?page=1&limit=10"));
+    const jobsPayload = await jobsResponse.json();
+    expect(jobsResponse.status).toBe(200);
+    expect(jobsPayload.data.map((item: { id: string }) => item.id)).toEqual(["job-active"]);
+
+    const recommendResponse = await getRecommendHome(
+      new Request("http://localhost/api/recommend/home", {
+        headers: {
+          "x-user-id": "user-1",
+        },
+      }),
+    );
+    const recommendPayload = await recommendResponse.json();
+    expect(recommendResponse.status).toBe(200);
+    expect(recommendPayload.data.jobs.some((item: { id: string }) => item.id === "job-expired")).toBe(false);
+
+    const scheduleResponse = await getSchedule(
+      new Request("http://localhost/api/schedule", {
+        headers: {
+          "x-user-id": "user-1",
+        },
+      }),
+    );
+    const schedulePayload = await scheduleResponse.json();
+    expect(scheduleResponse.status).toBe(200);
+    expect(schedulePayload.data.some((item: { id: string }) => item.id === "job-job-expired")).toBe(false);
+  });
+
   it("rejects invalid jobs query parameters", async () => {
     setServerAppContextForTesting(createTestAppContext());
 
@@ -1213,5 +1281,52 @@ describe("api routes", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("creates and reads ai tasks for the current user", async () => {
+    setServerAppContextForTesting(createTestAppContext());
+
+    const createResponse = await postJobResumeRewriteTask(
+      new Request("http://localhost/api/jobs/job-1/resume/rewrite-suggestions/tasks", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": "user-1",
+          "x-request-id": "req-task-1",
+        },
+        body: JSON.stringify({
+          rawText: "同济大学计算机科学专业，熟悉 React。",
+          fileName: "resume.txt",
+        }),
+      }),
+    );
+
+    const createPayload = await createResponse.json();
+    expect(createResponse.status).toBe(200);
+    expect(createPayload.data.capability).toBe("job_resume_rewrite");
+    expect(createPayload.data.status).toBe("pending");
+
+    const listResponse = await getAiTasks(
+      new Request("http://localhost/api/ai/tasks?capability=job_resume_rewrite", {
+        headers: {
+          "x-user-id": "user-1",
+        },
+      }),
+    );
+    const listPayload = await listResponse.json();
+    expect(listResponse.status).toBe(200);
+    expect(listPayload.data).toHaveLength(1);
+    expect(listPayload.data[0].id).toBe(createPayload.data.taskId);
+
+    const getResponse = await getAiTask(
+      new Request(`http://localhost/api/ai/tasks/${createPayload.data.taskId}`, {
+        headers: {
+          "x-user-id": "user-1",
+        },
+      }),
+    );
+    const getPayload = await getResponse.json();
+    expect(getResponse.status).toBe(200);
+    expect(getPayload.data.id).toBe(createPayload.data.taskId);
   });
 });

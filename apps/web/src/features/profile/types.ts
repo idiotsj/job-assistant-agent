@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import type { UserProfile } from "@job-assistant/contracts/profile";
+import type { ScheduleItem } from "@job-assistant/contracts/schedule";
 
 export type ProfileSessionStatus = "loading" | "authenticated" | "unauthenticated";
 export type ProfileViewState = "loading" | "unauthenticated" | "ready-live" | "error";
@@ -19,6 +20,17 @@ export interface ProfileSuggestionGroup {
   items: string[];
 }
 
+export interface ProfileStageTask {
+  stageLabel: string;
+  title: string;
+  explanation: string;
+  primaryActionLabel: string;
+  primaryActionHref: string;
+  secondaryActionLabel: string;
+  secondaryActionHref: string;
+  benefitTips: string[];
+}
+
 export interface ProfilePageData {
   currentProfile: UserProfile | null;
   displayUserLabel: string;
@@ -27,6 +39,16 @@ export interface ProfilePageData {
   summaryItems: ProfileSummaryItem[];
   suggestionGroups: ProfileSuggestionGroup[];
   hasResumeCache: boolean;
+  stageTask: ProfileStageTask | null;
+  profileTags: string[];
+  focusCards: Array<{
+    label: string;
+    value: string;
+    description: string;
+  }>;
+  timelinePreview: ScheduleItem[];
+  weeklyFocus: string[];
+  profileReadinessLabel: string;
 }
 
 export interface ProfilePageStatus {

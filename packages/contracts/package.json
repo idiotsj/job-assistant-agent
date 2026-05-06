@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./ai-tasks": "./src/ai-tasks.ts",
     "./auth": "./src/auth.ts",
     "./cases": "./src/cases.ts",
     "./civil-service": "./src/civil-service.ts",

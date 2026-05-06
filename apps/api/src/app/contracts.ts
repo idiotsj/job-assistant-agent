@@ -1,3 +1,5 @@
+import type { AiTaskRepository } from "@/modules/ai-tasks/repository";
+import type { AiTaskService } from "@/modules/ai-tasks/service";
 import type { AuthRepository } from "@/modules/auth/repository";
 import type { AuthService } from "@/modules/auth/service";
 import type { CaseRepository } from "@/modules/cases/repository";
@@ -23,6 +25,7 @@ import type { JobResumeAnalysisWorkflow } from "@/workflows/job-resume-analysis/
 import type { JobResumeRewriteWorkflow } from "@/workflows/job-resume-rewrite/run-job-resume-rewrite";
 
 export interface ServerRepositories {
+  aiTasks: AiTaskRepository;
   auth: AuthRepository;
   profile: ProfileRepository;
   jobs: JobRepository;
@@ -36,6 +39,7 @@ export interface ServerRepositories {
 }
 
 export interface ServerServices {
+  aiTasks: AiTaskService;
   auth: AuthService;
   profile: ProfileService;
   jobs: JobsService;

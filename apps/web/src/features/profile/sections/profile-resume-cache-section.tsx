@@ -7,8 +7,8 @@ export function ProfileResumeCacheSection({ hasResumeCache }: { hasResumeCache: 
     <Card className="feature-panel">
       <div className="section-heading">
         <div>
-          <h2>当前简历缓存</h2>
-          <p>后端画像里的 `resumeData` 可能为空，这里只做状态说明，不伪造历史能力。</p>
+          <h2>简历状态</h2>
+          <p>后端画像里的 `resumeData` 可能为空，这里只做真实状态说明，不伪造历史诊断能力。</p>
         </div>
       </div>
 

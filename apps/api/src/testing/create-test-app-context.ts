@@ -2,6 +2,8 @@ import { createServerServices } from "@/app/create-services";
 import { createServerWorkflows } from "@/app/create-workflows";
 import type { ServerAppContext, ServerRepositories } from "@/app/contracts";
 import type { AiServiceClient } from "@/integrations/ai-service/client";
+import { type AiTaskRepository } from "@/modules/ai-tasks/repository";
+import { aiTaskSchema, type AiTask, type AiTaskError, type AiTaskProgress } from "@/modules/ai-tasks/schema";
 import { type AuthRepository } from "@/modules/auth/repository";
 import { type AuthUser } from "@/modules/auth/schema";
 import { type CaseRepository } from "@/modules/cases/repository";
@@ -310,6 +312,7 @@ export function createTestAppContext(
   };
 
   const profiles = new Map(seed.profiles.map((profile) => [profile.userId, profile]));
+  const tasks = new Map<string, AiTask & { userId: string; payloadJson: Record<string, unknown>; requestId: string | null }>();
 
   const profileRepository: ProfileRepository = {
     async getByUserId(userId) {
@@ -340,7 +343,9 @@ export function createTestAppContext(
 
   const jobRepository: JobRepository = {
     async list(query) {
-      let items = [...seed.jobs];
+      let items = [...seed.jobs].filter(
+        (item) => item.deadline === null || new Date(item.deadline).getTime() >= Date.now(),
+      );
       if (query.city) {
         const cities = Array.isArray(query.city) ? query.city : [query.city];
         items = items.filter((item) => cities.includes(item.workLocation));
@@ -363,6 +368,116 @@ export function createTestAppContext(
     },
     async getById(id) {
       return seed.jobs.find((job) => job.id === id) ?? null;
+    },
+  };
+
+  const aiTaskRepository: AiTaskRepository = {
+    async create(input) {
+      const task = aiTaskSchema.parse({
+        id: `task-${tasks.size + 1}`,
+        capability: input.capability,
+        status: "pending",
+        progress: null,
+        result: null,
+        error: null,
+        createdAt: new Date().toISOString(),
+        startedAt: null,
+        finishedAt: null,
+      });
+
+      tasks.set(task.id, {
+        ...task,
+        userId: input.userId,
+        payloadJson: input.payloadJson,
+        requestId: input.requestId ?? null,
+      });
+
+      return task;
+    },
+
+    async getByIdForUser(taskId, userId) {
+      const task = tasks.get(taskId);
+      if (!task || task.userId !== userId) {
+        return null;
+      }
+      return task;
+    },
+
+    async listByUser(userId, query) {
+      let items = [...tasks.values()].filter((task) => task.userId === userId);
+      if (query.capability) {
+        items = items.filter((task) => task.capability === query.capability);
+      }
+      if (query.status) {
+        items = items.filter((task) => task.status === query.status);
+      }
+      items = items
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        .slice(0, query.limit);
+      return {
+        items,
+        total: items.length,
+      };
+    },
+
+    async claimNext() {
+      const next = [...tasks.values()]
+        .filter((task) => task.status === "pending")
+        .sort((left, right) => left.createdAt.localeCompare(right.createdAt))[0];
+      if (!next) {
+        return null;
+      }
+
+      next.status = "running";
+      next.startedAt = new Date().toISOString();
+      next.progress = {
+        step: "claimed",
+        message: "Claimed by test worker",
+        percent: 0,
+      };
+
+      return {
+        id: next.id,
+        capability: next.capability,
+        userId: next.userId,
+        payloadJson: next.payloadJson,
+        requestId: next.requestId,
+      };
+    },
+
+    async markProgress(taskId, progress: AiTaskProgress) {
+      const task = tasks.get(taskId);
+      if (!task) {
+        return;
+      }
+      task.progress = progress;
+    },
+
+    async markSucceeded(taskId, result, progress = null) {
+      const task = tasks.get(taskId);
+      if (!task) {
+        return;
+      }
+      task.status = "succeeded";
+      task.result = result;
+      task.error = null;
+      task.progress = progress;
+      task.finishedAt = new Date().toISOString();
+    },
+
+    async markFailed(taskId, error: AiTaskError, progress = null) {
+      const task = tasks.get(taskId);
+      if (!task) {
+        return;
+      }
+      task.status = "failed";
+      task.error = error;
+      task.progress = progress;
+      task.finishedAt = new Date().toISOString();
+    },
+
+    async failStaleRunningTasks() {
+      return 0;
     },
   };
 
@@ -504,6 +619,7 @@ export function createTestAppContext(
   };
 
   const repositories: ServerRepositories = {
+    aiTasks: aiTaskRepository,
     auth: authRepository,
     profile: profileRepository,
     jobs: jobRepository,

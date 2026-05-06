@@ -44,8 +44,8 @@ export function ProfilePageIntro({
   return (
     <div className="page-header">
       <div>
-        <h1>用户画像</h1>
-        <p>这里是后续所有个性化能力的核心输入层。先把你想去哪里、想投什么、会什么写清楚，推荐结果才会稳定。</p>
+        <h1>个人中心</h1>
+        <p>这里不只是资料编辑区，而是你的阶段状态、关键日程、简历准备和目标方向的统一承载位。先把画像守稳，后续推荐和行动链路才会更顺。</p>
       </div>
       <div className="page-header__actions">
         <Badge tone={badge.tone}>

@@ -333,6 +333,33 @@ describe("api server integration", () => {
       expect(rewriteResponse.statusCode).toBe(200);
       expect(rewriteResponse.json().data.rewriteSuggestions.keywordSuggestions).toContain("React");
       expect(rewriteResponse.json().data.profile.resumeData.parsedResume.fileName).toBe("resume.txt");
+
+      const createTaskResponse = await server.inject({
+        method: "POST",
+        url: "/api/jobs/job-1/resume/rewrite-suggestions/tasks",
+        headers: {
+          cookie: cookieHeader,
+        },
+        payload: {
+          rawText: "同济大学计算机科学专业，熟悉 Python，目标前端开发。",
+          fileName: "resume.txt",
+        },
+      });
+
+      expect(createTaskResponse.statusCode).toBe(200);
+      expect(createTaskResponse.json().data.capability).toBe("job_resume_rewrite");
+
+      const taskId = createTaskResponse.json().data.taskId as string;
+      const getTaskResponse = await server.inject({
+        method: "GET",
+        url: `/api/ai/tasks/${taskId}`,
+        headers: {
+          cookie: cookieHeader,
+        },
+      });
+
+      expect(getTaskResponse.statusCode).toBe(200);
+      expect(getTaskResponse.json().data.id).toBe(taskId);
     } finally {
       await server.close();
     }

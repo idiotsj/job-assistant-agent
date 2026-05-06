@@ -1,4 +1,4 @@
-import { AppError, NotFoundError } from "@/core/errors/app-error";
+import { NotFoundError, ServiceUnavailableError } from "@/core/errors/app-error";
 import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai-service/client";
 import type { JobRepository } from "@/modules/jobs/repository";
 import { jobResumeAnalyzeResultSchema, type JobResumeAnalyzeInput, type JobResumeAnalyzeResult } from "@/modules/jobs/schema";
@@ -35,10 +35,11 @@ export function createJobResumeAnalysisWorkflow(
       }
 
       if (!deps.aiService.enabled) {
-        throw new AppError("Job resume analysis is temporarily unavailable", {
-          code: "AI_SERVICE_UNAVAILABLE",
-          status: 503,
-        });
+        throw new ServiceUnavailableError(
+          "Job resume analysis is temporarily unavailable",
+          undefined,
+          "AI_SERVICE_UNAVAILABLE",
+        );
       }
 
       const current = currentProfile ?? getEmptyProfile(userId);
@@ -67,13 +68,13 @@ export function createJobResumeAnalysisWorkflow(
         );
         analysis = aiResult.analysis;
       } catch (error) {
-        throw new AppError("Job resume analysis is temporarily unavailable", {
-          code: "AI_SERVICE_UNAVAILABLE",
-          status: 503,
-          details: {
+        throw new ServiceUnavailableError(
+          "Job resume analysis is temporarily unavailable",
+          {
             cause: error instanceof Error ? error.message : String(error),
           },
-        });
+          "AI_SERVICE_UNAVAILABLE",
+        );
       }
 
       const profile = await deps.profileRepository.upsert(userId, nextProfileDraft);

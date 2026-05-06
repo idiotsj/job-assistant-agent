@@ -16,7 +16,7 @@ export function ProfileSummarySection({
       <div className="section-heading">
         <div>
           <h2>当前画像摘要</h2>
-          <p>这里适合持续保留一个右侧摘要位，帮助用户快速确认系统理解。</p>
+          <p>这里保留为快速校验区，帮助用户确认系统理解是否正确，而不是重新读一遍所有字段。</p>
         </div>
       </div>
 

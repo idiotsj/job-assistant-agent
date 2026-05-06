@@ -4,7 +4,9 @@ import type { FormEvent } from "react";
 import { startTransition, useEffect, useEffectEvent, useMemo, useState } from "react";
 
 import { useAuthSession } from "@/components/providers/auth-provider";
+import { demoScheduleItems } from "@/features/shared/demo-data";
 import { getProfile, updateProfile } from "@/lib/api/profile";
+import { getScheduleTimeline } from "@/lib/api/schedule";
 import { formatUserFacingError } from "@/lib/errors";
 
 import type {
@@ -16,11 +18,19 @@ import type {
   ProfileTextField,
 } from "../types";
 import {
+  buildProfileFocusCards,
+  buildProfileStageTask,
+  buildProfileTags,
+  buildProfileTimelinePreview,
+  buildProfileWeeklyFocus,
   buildProfileSuggestionGroups,
   buildProfileSummaryItems,
   createEmptyProfile,
   getProfileCompleteness,
+  getProfileReadinessLabel,
+  getProfileTimelineLabel,
   getProfileViewState,
+  sortProfileTimeline,
 } from "../utils";
 
 interface ProfilePageController {
@@ -32,6 +42,7 @@ interface ProfilePageController {
 export function useProfilePage(): ProfilePageController {
   const { status: sessionStatus, user } = useAuthSession();
   const [profile, setProfile] = useState<ReturnType<typeof createEmptyProfile> | null>(null);
+  const [timeline, setTimeline] = useState(() => sortProfileTimeline(demoScheduleItems));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -47,13 +58,15 @@ export function useProfilePage(): ProfilePageController {
     setErrorMessage("");
 
     try {
-      const nextProfile = await getProfile();
+      const [nextProfile, nextTimeline] = await Promise.all([getProfile(), getScheduleTimeline()]);
       startTransition(() => {
         setProfile(nextProfile);
+        setTimeline(sortProfileTimeline(nextTimeline));
       });
     } catch (error) {
       startTransition(() => {
         setProfile(createEmptyProfile(user.id));
+        setTimeline(sortProfileTimeline(demoScheduleItems));
         setErrorMessage(formatUserFacingError(error, "画像暂时没取到，先继续填写也可以。"));
       });
     } finally {
@@ -167,6 +180,22 @@ export function useProfilePage(): ProfilePageController {
       summaryItems: currentProfile ? buildProfileSummaryItems(currentProfile) : [],
       suggestionGroups: buildProfileSuggestionGroups(),
       hasResumeCache: Boolean(currentProfile?.resumeData),
+      stageTask: currentProfile
+        ? buildProfileStageTask(
+            currentProfile,
+            getProfileCompleteness(currentProfile),
+            7,
+          )
+        : null,
+      profileTags: currentProfile ? buildProfileTags(currentProfile) : [],
+      focusCards: currentProfile
+        ? buildProfileFocusCards(currentProfile, getProfileCompleteness(currentProfile), 7)
+        : [],
+      timelinePreview: buildProfileTimelinePreview(timeline),
+      weeklyFocus: currentProfile ? buildProfileWeeklyFocus(currentProfile) : [],
+      profileReadinessLabel: currentProfile
+        ? getProfileReadinessLabel(getProfileCompleteness(currentProfile), 7)
+        : "画像状态待恢复",
     },
     status: {
       sessionStatus,

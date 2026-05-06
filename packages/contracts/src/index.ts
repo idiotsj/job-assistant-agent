@@ -1,4 +1,5 @@
 export * from "./auth";
+export * from "./ai-tasks";
 export * from "./cases";
 export * from "./civil-service";
 export * from "./companies";

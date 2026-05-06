@@ -6,9 +6,11 @@ import { ProfileFormSection } from "./sections/profile-form-section";
 import { ProfileLoadingState } from "./sections/profile-loading-state";
 import { ProfilePageIntro } from "./sections/profile-page-intro";
 import { ProfileResumeCacheSection } from "./sections/profile-resume-cache-section";
+import { ProfileStageSection } from "./sections/profile-stage-section";
 import { ProfileStatusStrip } from "./sections/profile-status-strip";
 import { ProfileSuggestionsSection } from "./sections/profile-suggestions-section";
 import { ProfileSummarySection } from "./sections/profile-summary-section";
+import { ProfileTimelineSection } from "./sections/profile-timeline-section";
 
 export function ProfilePage() {
   const { data, status, actions } = useProfilePage();
@@ -29,26 +31,39 @@ export function ProfilePage() {
       ) : status.viewState === "unauthenticated" ? (
         <ProfileAuthPrompt />
       ) : data.currentProfile ? (
-        <div className="profile-layout">
-          <ProfileFormSection
-            profile={data.currentProfile}
-            saving={status.saving}
-            onSubmit={actions.saveProfile}
-            onTextFieldChange={actions.updateTextField}
-            onTagFieldChange={actions.updateTagField}
-            onToggleFlag={actions.toggleFlagField}
+        <>
+          <ProfileStageSection
+            displayUserLabel={data.displayUserLabel}
+            profileReadinessLabel={data.profileReadinessLabel}
+            profileTags={data.profileTags}
+            stageTask={data.stageTask}
+            focusCards={data.focusCards}
           />
-
-          <div className="page-stack">
-            <ProfileSummarySection
-              completeness={data.completeness}
-              total={data.completenessTotal}
-              summaryItems={data.summaryItems}
+          <ProfileTimelineSection
+            timelinePreview={data.timelinePreview}
+            weeklyFocus={data.weeklyFocus}
+          />
+          <div className="profile-layout">
+            <ProfileFormSection
+              profile={data.currentProfile}
+              saving={status.saving}
+              onSubmit={actions.saveProfile}
+              onTextFieldChange={actions.updateTextField}
+              onTagFieldChange={actions.updateTagField}
+              onToggleFlag={actions.toggleFlagField}
             />
-            <ProfileSuggestionsSection groups={data.suggestionGroups} onAppendTag={actions.appendSuggestedTag} />
-            <ProfileResumeCacheSection hasResumeCache={data.hasResumeCache} />
+
+            <div className="page-stack">
+              <ProfileSummarySection
+                completeness={data.completeness}
+                total={data.completenessTotal}
+                summaryItems={data.summaryItems}
+              />
+              <ProfileSuggestionsSection groups={data.suggestionGroups} onAppendTag={actions.appendSuggestedTag} />
+              <ProfileResumeCacheSection hasResumeCache={data.hasResumeCache} />
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
     </div>
   );

@@ -30,6 +30,18 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class ConflictError extends AppError {
+  constructor(message = "Conflict", details?: unknown, code = "CONFLICT") {
+    super(message, { code, status: 409, details });
+  }
+}
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message = "Service unavailable", details?: unknown, code = "SERVICE_UNAVAILABLE") {
+    super(message, { code, status: 503, details });
+  }
+}
+
 export class ConfigurationError extends AppError {
   constructor(message = "Configuration error", details?: unknown) {
     super(message, { code: "CONFIGURATION_ERROR", status: 500, details });
@@ -47,4 +59,3 @@ export function normalizeError(error: unknown): AppError {
 
   return new AppError("Unknown error", { details: { error } });
 }
-

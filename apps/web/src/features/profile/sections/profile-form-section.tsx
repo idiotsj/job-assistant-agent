@@ -32,7 +32,7 @@ export function ProfileFormSection({
       <div className="section-heading">
         <div>
           <h2>画像编辑区</h2>
-          <p>保持字段和后端契约一致，不在前端自创另一套模型。</p>
+          <p>继续沿用真实 contract 字段做维护，把资料补全这件事收敛成一个稳定可扩展的编辑面板。</p>
         </div>
         <UserRound size={18} color="hsl(var(--primary))" />
       </div>

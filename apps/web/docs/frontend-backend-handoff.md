@@ -43,15 +43,17 @@ packages/
 - 公共业务接口由 `apps/api` 暴露，前端只应访问它。
 - `apps/api` 内部会按需转调 `apps/ai-service`，前端不得直连 Python AI Service。
 - 首页推荐、画像、岗位、案例、宣讲会、日程、考研建议、考公建议、简历解析/诊断/岗位定向分析/岗位定向改写建议都已有后端实现。
+- 岗位定向改写建议现已新增异步任务版接口，可采用“创建任务 + 查状态/结果 + 可选 WebSocket 订阅”方式接入。
 
 ### 1.4 当前验证状态
 
-以下结果已于 `2026-04-17` 本地验证通过：
+以下结果已于 `2026-05-05` 本地验证通过：
 
-- `pnpm typecheck`
-- `pnpm --filter api test` 通过，`51/51`
+- `pnpm --filter @job-assistant/contracts typecheck`
+- `pnpm --filter api typecheck`
+- `pnpm --filter api test` 通过，`55/55`
 - `pnpm --filter web test` 通过，`2/2`
-- `python -m pytest apps/ai-service/tests` 通过，`25/25`
+- `python -m pytest apps/ai-service/tests` 通过，`26/26`
 
 ## 2. 你接手前端时必须先记住的规则
 
@@ -308,6 +310,27 @@ Fastify 会话配置当前是：
 - `409 / EMAIL_ALREADY_REGISTERED`：注册邮箱已存在
 - `500`：服务内部错误或配置错误
 - `503`：依赖 AI Service 的接口当前不可用
+
+### 4.5 新增异步 AI 任务接口
+
+当前后端已新增一套异步 AI 任务接口，第一批试点能力是岗位定向简历改写建议：
+
+- `POST /api/jobs/:id/resume/rewrite-suggestions/tasks`
+- `GET /api/ai/tasks`
+- `GET /api/ai/tasks/:id`
+- `GET /api/ai/tasks/ws`
+
+前端接入建议：
+
+1. 提交简历文本到 `.../tasks` 创建任务
+2. 立即拿到 `taskId`
+3. 用 `GET /api/ai/tasks/:id` 轮询，或者同时建立 `GET /api/ai/tasks/ws` 订阅
+4. 收到完成通知后，再请求一次 `GET /api/ai/tasks/:id` 取权威结果
+
+当前权衡：
+
+- 旧同步接口仍保留，适合已有页面继续使用
+- 新异步接口更适合后续对话工作区、长文本建议和实时状态反馈
 
 ## 5. 页面 / 模块对接矩阵
 

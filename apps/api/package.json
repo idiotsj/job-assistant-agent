@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:worker": "tsx watch src/worker.ts",
     "build": "tsup --config tsup.config.ts",
     "start": "node dist/server.js",
+    "start:worker": "node dist/worker.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -13,6 +15,7 @@
     "@fastify/cookie": "11.0.2",
     "@fastify/cors": "11.1.0",
     "@fastify/secure-session": "8.2.0",
+    "@fastify/websocket": "11.2.0",
     "@job-assistant/contracts": "workspace:*",
     "argon2": "0.44.0",
     "fastify": "5.6.1",

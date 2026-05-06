@@ -1,4 +1,4 @@
-import { AppError } from "@/core/errors/app-error";
+import { ServiceUnavailableError } from "@/core/errors/app-error";
 import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai-service/client";
 import type {
   ParsedResume,
@@ -100,13 +100,13 @@ export async function resolveResumeParseArtifacts(
     parsed = aiResult.parsed;
     suggestedPatch = aiResult.patch;
   } catch (error) {
-    throw new AppError("Resume parsing failed", {
-      code: "AI_SERVICE_UNAVAILABLE",
-      status: 503,
-      details: {
+    throw new ServiceUnavailableError(
+      "Resume parsing failed",
+      {
         cause: error instanceof Error ? error.message : String(error),
       },
-    });
+      "AI_SERVICE_UNAVAILABLE",
+    );
   }
 
   const appliedPatch = buildResumePatch(current, parsed, suggestedPatch, input.fileName ?? null);

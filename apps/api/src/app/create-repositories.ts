@@ -1,4 +1,5 @@
 import { getDbClient } from "@/core/db/client";
+import { createAiTaskRepository } from "@/modules/ai-tasks/repository";
 import { createAuthRepository } from "@/modules/auth/repository";
 import { createCaseRepository } from "@/modules/cases/repository";
 import { createCivilServiceRepository } from "@/modules/civil-service/repository";
@@ -16,6 +17,7 @@ export function createServerRepositories(overrides?: Partial<ServerRepositories>
   const db = getDbClient();
 
   return {
+    aiTasks: overrides?.aiTasks ?? createAiTaskRepository(db),
     auth: overrides?.auth ?? createAuthRepository(db),
     profile: overrides?.profile ?? createProfileRepository(db),
     jobs: overrides?.jobs ?? createJobRepository(db),
@@ -28,4 +30,3 @@ export function createServerRepositories(overrides?: Partial<ServerRepositories>
     schedule: overrides?.schedule ?? createScheduleRepository(db),
   };
 }
-

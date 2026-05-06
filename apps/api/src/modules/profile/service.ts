@@ -1,4 +1,4 @@
-import { AppError } from "@/core/errors/app-error";
+import { ServiceUnavailableError } from "@/core/errors/app-error";
 import type { AiServiceClient, AiServiceRequestContext } from "@/integrations/ai-service/client";
 import { type ProfileRepository } from "@/modules/profile/repository";
 import { getEmptyProfile, resolveResumeParseArtifacts } from "@/modules/profile/resume-sync";
@@ -60,10 +60,7 @@ export function createProfileService(repository: ProfileRepository, aiService: A
       const current = (await repository.getByUserId(userId)) ?? getEmptyProfile(userId);
 
       if (!aiService.enabled) {
-        throw new AppError("Resume parsing is temporarily unavailable", {
-          code: "AI_SERVICE_UNAVAILABLE",
-          status: 503,
-        });
+        throw new ServiceUnavailableError("Resume parsing is temporarily unavailable", undefined, "AI_SERVICE_UNAVAILABLE");
       }
 
       const { parsed, appliedPatch, nextProfileDraft } = await resolveResumeParseArtifacts(
@@ -86,10 +83,11 @@ export function createProfileService(repository: ProfileRepository, aiService: A
       const current = (await repository.getByUserId(userId)) ?? getEmptyProfile(userId);
 
       if (!aiService.enabled) {
-        throw new AppError("Resume diagnosis is temporarily unavailable", {
-          code: "AI_SERVICE_UNAVAILABLE",
-          status: 503,
-        });
+        throw new ServiceUnavailableError(
+          "Resume diagnosis is temporarily unavailable",
+          undefined,
+          "AI_SERVICE_UNAVAILABLE",
+        );
       }
 
       const { parsed, appliedPatch, nextProfileDraft } = await resolveResumeParseArtifacts(
@@ -116,13 +114,13 @@ export function createProfileService(repository: ProfileRepository, aiService: A
         );
         diagnosis = aiResult.diagnosis;
       } catch (error) {
-        throw new AppError("Resume diagnosis is temporarily unavailable", {
-          code: "AI_SERVICE_UNAVAILABLE",
-          status: 503,
-          details: {
+        throw new ServiceUnavailableError(
+          "Resume diagnosis is temporarily unavailable",
+          {
             cause: error instanceof Error ? error.message : String(error),
           },
-        });
+          "AI_SERVICE_UNAVAILABLE",
+        );
       }
 
       const nextProfile = applyLatestResumeDiagnosis(nextProfileDraft, diagnosis);

@@ -1,4 +1,4 @@
-import { AppError, NotFoundError, UnauthorizedError, ValidationAppError } from "@/core/errors/app-error";
+import { ConflictError, NotFoundError, UnauthorizedError, ValidationAppError } from "@/core/errors/app-error";
 import { withTransaction } from "@/core/db/client";
 import { createAuthRepository, type AuthRepository } from "@/modules/auth/repository";
 import { hashPassword, verifyPassword } from "@/modules/auth/password";
@@ -14,6 +14,16 @@ export interface AuthServiceOptions {
   createUserWithProfile?: (input: { email: string; passwordHash: string; name: string }) => Promise<AuthUser>;
 }
 
+function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string" &&
+    (error as { code: string }).code === "23505"
+  );
+}
+
 export function createAuthService(repository: AuthRepository, options: AuthServiceOptions = {}): AuthService {
   return {
     async register(input) {
@@ -24,7 +34,7 @@ export function createAuthService(repository: AuthRepository, options: AuthServi
 
       const existing = await repository.getUserWithPasswordByEmail(parsed.data.email);
       if (existing) {
-        throw new AppError("Email already registered", { code: "EMAIL_ALREADY_REGISTERED", status: 409 });
+        throw new ConflictError("Email already registered", undefined, "EMAIL_ALREADY_REGISTERED");
       }
 
       const passwordHash = await hashPassword(parsed.data.password);
@@ -43,11 +53,18 @@ export function createAuthService(repository: AuthRepository, options: AuthServi
             return user;
           }));
 
-      return persistUser({
-        email: parsed.data.email,
-        passwordHash,
-        name: parsed.data.name,
-      });
+      try {
+        return await persistUser({
+          email: parsed.data.email,
+          passwordHash,
+          name: parsed.data.name,
+        });
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw new ConflictError("Email already registered", undefined, "EMAIL_ALREADY_REGISTERED");
+        }
+        throw error;
+      }
     },
 
     async validateCredentials(input) {

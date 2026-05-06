@@ -4,6 +4,12 @@
 
 ## 1. 基础约定
 
+### 健康检查
+
+- `GET /health`
+- 说明：后端存活检查，返回最小健康状态
+- 鉴权：不需要
+
 ### Base URL
 
 - 本地 API：`http://localhost:3001`
@@ -104,6 +110,7 @@
 
 - 说明：用户名密码登录，并建立 Cookie Session
 - 鉴权：不需要
+- 当前实现说明：已抽为独立登录处理文件，并由 Fastify 注册层桥接 session 写入
 
 请求体：
 
@@ -118,6 +125,7 @@
 
 - 说明：清理当前登录态
 - 鉴权：不需要
+- 当前实现说明：已抽为独立登出处理文件，并由 Fastify 注册层桥接 session 清理
 
 ### `GET /api/auth/me`
 
@@ -137,11 +145,15 @@
 - `GET /api/jobs/:id`
 - `POST /api/jobs/:id/resume/analyze`
 - `POST /api/jobs/:id/resume/rewrite-suggestions`
+- `POST /api/jobs/:id/resume/rewrite-suggestions/tasks`
 - `GET /api/companies`
 - `GET /api/companies/:id`
 - `GET /api/cases`
 - `GET /api/events`
 - `GET /api/daily-content/today`
+- `GET /api/ai/tasks`
+- `GET /api/ai/tasks/:id`
+- `GET /api/ai/tasks/ws`
 - `GET /api/schedule`
 - `POST /api/schedule`
 - `PUT /api/schedule/:id`
@@ -314,6 +326,90 @@
 - 如果 `apps/api` 无法连接 `apps/ai-service`，接口返回 `503`
 - 如果 `apps/ai-service` 可达但 provider 失败，内部 pipeline 会回退到规则版建议，公共接口仍返回可用结果
 
+### `POST /api/jobs/:id/resume/rewrite-suggestions/tasks`
+
+- 说明：创建一个岗位定向简历改写建议异步任务，不等待 AI 结果完成
+- 鉴权：需要
+
+请求体：
+
+```json
+{
+  "rawText": "同济大学计算机科学专业，熟悉 React，希望在上海从事前端开发。",
+  "fileName": "resume.txt"
+}
+```
+
+响应中的 `data` 包含：
+
+- `taskId`
+- `capability`
+- `status`
+
+说明：
+
+- 旧同步接口 `POST /api/jobs/:id/resume/rewrite-suggestions` 保持不变
+- 第一批异步任务能力固定为 `job_resume_rewrite`
+
+### `GET /api/ai/tasks`
+
+- 说明：按当前登录用户查询自己的 AI 任务列表
+- 鉴权：需要
+
+支持 query：
+
+- `capability`
+- `status`
+- `limit`
+
+### `GET /api/ai/tasks/:id`
+
+- 说明：读取当前登录用户的单个 AI 任务详情
+- 鉴权：需要
+
+说明：
+
+- 只允许读取自己的任务
+- 任务成功时 `result` 为完整业务结果
+- 任务失败时 `error` 为稳定错误对象
+
+### `GET /api/ai/tasks/ws`
+
+- 说明：AI 任务状态通知 WebSocket 通道
+- 鉴权：需要，沿用 Cookie Session
+- 角色：仅通知，不作为主调用入口
+
+当前消息协议：
+
+- 客户端订阅：
+
+```json
+{
+  "type": "subscribe",
+  "taskIds": ["task-1"]
+}
+```
+
+- 服务端推送：
+
+```json
+{
+  "type": "task.updated",
+  "taskId": "task-1",
+  "status": "running",
+  "progress": {
+    "step": "prepare",
+    "message": "Preparing resume rewrite analysis",
+    "percent": 10
+  }
+}
+```
+
+使用约定：
+
+- 收到完成或失败推送后，前端仍应再请求 `GET /api/ai/tasks/:id` 获取权威结果
+- 第一版 WebSocket 只做任务状态通知，不承载完整会话协议
+
 ## 3.1 内部 AI 服务协作
 
 当前仓库新增了内部 Python 服务：
@@ -332,6 +428,29 @@
 
 - 这些接口只供 `apps/api` 调用，不对前端直接开放
 - 这样做的好处是，推荐增强和简历 NLP 可以逐步迁到 Python，而公共业务 API 路径保持不变
+
+## 3.2 异步任务说明
+
+当前异步任务底座已在 `apps/api` 落地：
+
+- PostgreSQL 作为第一版任务队列
+- `apps/api` 负责任务创建、归属校验、状态查询和业务写回
+- 独立 worker 进程负责 claim 与执行
+
+当前 worker 入口：
+
+- [worker.ts](/D:/code/work%20agent/apps/api/src/worker.ts)
+
+当前脚本：
+
+- `pnpm --filter api dev:worker`
+- `pnpm --filter api start:worker`
+
+说明：
+
+- 第一版不做自动重试
+- stale `running` 任务会在 worker 启动时恢复为失败态
+- 当前第一条异步试点是岗位定向简历改写建议
 
 ## 4. 数据模型概要
 

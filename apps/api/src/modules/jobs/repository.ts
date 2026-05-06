@@ -31,6 +31,8 @@ export function createJobRepository(db: DbClient): JobRepository {
     async list(query) {
       const where = createWhereBuilder();
 
+      where.addRaw("(deadline IS NULL OR deadline >= NOW())");
+
       const cities = ensureArray(query.city);
       if (cities.length > 0) {
         where.addValue(cities, (index) => `work_location = ANY($${index})`);

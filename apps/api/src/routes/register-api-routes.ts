@@ -1,14 +1,16 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, HTTPMethods } from "fastify";
+import websocket from "@fastify/websocket";
 
 import { getServerAppContext } from "@/app/context";
-import { normalizeError, UnauthorizedError } from "@/core/errors/app-error";
+import { normalizeError } from "@/core/errors/app-error";
 import { attachRequestId, resolveRequestId } from "@/core/http/request-id";
 import { logger } from "@/core/logger";
 import { failure, success } from "@/core/response/json";
-import { parseBody } from "@/core/validation/http";
-import { loginInputSchema, logoutResponseSchema } from "@/modules/auth/schema";
 import { GET as getMe } from "@/routes/auth/me/route";
+import { handleLoginRequest } from "@/routes/auth/login/route";
+import { handleLogoutRequest } from "@/routes/auth/logout/route";
 import { POST as postRegister } from "@/routes/auth/register/route";
+import { SessionUser, getSession } from "@/routes/auth/session-bridge";
 import { GET as getCases } from "@/routes/cases/route";
 import { GET as getCivilServiceAdvice } from "@/routes/civil-service/advice/route";
 import { GET as getCompanies } from "@/routes/companies/route";
@@ -26,21 +28,10 @@ import { POST as postProfileResumeParse } from "@/routes/profile/resume/parse/ro
 import { GET as getRecommendHome } from "@/routes/recommend/home/route";
 import { DELETE as deleteScheduleItem, PUT as putScheduleItem } from "@/routes/schedule/[id]/route";
 import { GET as getSchedule, POST as postSchedule } from "@/routes/schedule/route";
+import { GET as getAiTask, GET_LIST as getAiTasks, WS as aiTasksWs } from "@/routes/ai/tasks/route";
+import { POST as postJobResumeRewriteTask } from "@/routes/jobs/[id]/resume/rewrite-suggestions/tasks/route";
 
 type WebRouteHandler = (request: Request) => Promise<Response>;
-
-interface SessionStore {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  delete(): void;
-}
-
-interface SessionUser {
-  id: string;
-  email?: string | null;
-  role?: "user" | "admin";
-  status?: "active" | "disabled";
-}
 
 const FORWARDED_INTERNAL_AUTH_HEADERS = new Set([
   "x-internal-auth-user-id",
@@ -58,10 +49,6 @@ const FORWARDED_INTERNAL_AUTH_HEADERS = new Set([
   "x-user-name",
   "x-demo-user-id",
 ]);
-
-function getSession(request: FastifyRequest) {
-  return (request as FastifyRequest & { session: SessionStore }).session;
-}
 
 function appendHeader(headers: Headers, key: string, value: string | string[]) {
   if (Array.isArray(value)) {
@@ -187,6 +174,8 @@ function registerWebRoute(
 }
 
 export async function registerApiRoutes(app: FastifyInstance) {
+  await app.register(websocket);
+
   app.get("/health", async () => ({
     success: true,
     data: {
@@ -195,30 +184,11 @@ export async function registerApiRoutes(app: FastifyInstance) {
   }));
 
   app.post("/api/auth/login", async (request, reply) => {
-    return executeCustomRoute(request, reply, async (webRequest) => {
-      const input = await parseBody(webRequest, loginInputSchema);
-      const user = await getServerAppContext().services.auth.validateCredentials(input);
-
-      if (!user) {
-        throw new UnauthorizedError("Invalid email or password");
-      }
-
-      getSession(request).set("authUser", {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-      } satisfies SessionUser);
-
-      return success(user);
-    });
+    return executeCustomRoute(request, reply, async (webRequest) => handleLoginRequest(request, webRequest));
   });
 
   app.post("/api/auth/logout", async (request, reply) => {
-    return executeCustomRoute(request, reply, async () => {
-      getSession(request).delete();
-      return success(logoutResponseSchema.parse({ loggedOut: true }));
-    });
+    return executeCustomRoute(request, reply, async () => handleLogoutRequest(request));
   });
 
   registerWebRoute(app, "GET", "/api/auth/me", getMe);
@@ -232,6 +202,7 @@ export async function registerApiRoutes(app: FastifyInstance) {
   registerWebRoute(app, "GET", "/api/jobs/:id", getJob);
   registerWebRoute(app, "POST", "/api/jobs/:id/resume/analyze", postJobResumeAnalyze);
   registerWebRoute(app, "POST", "/api/jobs/:id/resume/rewrite-suggestions", postJobResumeRewriteSuggestions);
+  registerWebRoute(app, "POST", "/api/jobs/:id/resume/rewrite-suggestions/tasks", postJobResumeRewriteTask);
   registerWebRoute(app, "GET", "/api/companies", getCompanies);
   registerWebRoute(app, "GET", "/api/companies/:id", getCompany);
   registerWebRoute(app, "GET", "/api/cases", getCases);
@@ -241,6 +212,12 @@ export async function registerApiRoutes(app: FastifyInstance) {
   registerWebRoute(app, "POST", "/api/schedule", postSchedule);
   registerWebRoute(app, "PUT", "/api/schedule/:id", putScheduleItem);
   registerWebRoute(app, "DELETE", "/api/schedule/:id", deleteScheduleItem);
+  registerWebRoute(app, "GET", "/api/ai/tasks", getAiTasks);
+  registerWebRoute(app, "GET", "/api/ai/tasks/:id", getAiTask);
   registerWebRoute(app, "GET", "/api/postgraduate/advice", getPostgraduateAdvice);
   registerWebRoute(app, "GET", "/api/civil-service/advice", getCivilServiceAdvice);
+
+  app.get("/api/ai/tasks/ws", { websocket: true }, async (socket, request) => {
+    await aiTasksWs(socket, request);
+  });
 }

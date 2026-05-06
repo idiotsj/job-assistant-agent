@@ -1,3 +1,4 @@
+import { createAiTaskService } from "@/modules/ai-tasks/service";
 import { createAuthService, type AuthServiceOptions } from "@/modules/auth/service";
 import { createCasesService } from "@/modules/cases/service";
 import { createCivilServiceService } from "@/modules/civil-service/service";
@@ -31,6 +32,7 @@ export function createServerServices(
   );
 
   return {
+    aiTasks: createAiTaskService(repositories.aiTasks),
     auth: createAuthService(repositories.auth, options.auth),
     profile: createProfileService(repositories.profile, aiService),
     jobs: createJobsService(repositories.jobs),
