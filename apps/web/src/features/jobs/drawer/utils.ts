@@ -1,4 +1,5 @@
 import type { Job, JobResumeAnalyzeResult, JobResumeRewriteSection, JobResumeRewriteSuggestionsResult } from "@job-assistant/contracts/jobs";
+import type { AiTask, AiTaskStatus } from "@job-assistant/contracts/ai-tasks";
 
 import { ApiError } from "@/lib/api/client";
 import { formatUserFacingError } from "@/lib/errors";
@@ -158,6 +159,64 @@ export function getJobAnalysisActionError(error: unknown, target: "analysis" | "
     error,
     target === "analysis" ? "岗位分析没有成功，请稍后再试。" : "改写建议没有成功，请稍后再试。",
   );
+}
+
+export function getAiTaskStatusLabel(status: "idle" | AiTaskStatus) {
+  switch (status) {
+    case "idle":
+      return "尚未创建异步任务";
+    case "pending":
+      return "任务已创建，正在排队";
+    case "running":
+      return "任务执行中";
+    case "succeeded":
+      return "任务已完成";
+    case "failed":
+      return "任务执行失败";
+    case "cancelled":
+      return "任务已取消";
+    default:
+      return "任务状态未知";
+  }
+}
+
+export function getAiTaskPendingMessage(task: AiTask, channel: "idle" | "websocket" | "polling") {
+  const progress = task.progress;
+  if (progress?.message) {
+    return `${progress.message}${channel === "polling" ? "，当前已自动切到轮询刷新。" : ""}`;
+  }
+
+  if (task.status === "pending") {
+    return channel === "polling"
+      ? "改写建议任务已创建，正在排队，当前已自动切到轮询刷新。"
+      : "改写建议任务已创建，正在排队。";
+  }
+
+  return channel === "polling"
+    ? "改写建议任务执行中，当前已自动切到轮询刷新。"
+    : "改写建议任务执行中，完成后会自动刷新结果。";
+}
+
+export function getAiTaskFailureMessage(task: AiTask) {
+  const errorCode = task.error?.code ?? "TASK_EXECUTION_FAILED";
+
+  if (errorCode === "UNAUTHORIZED") {
+    return "当前登录状态已失效，请重新登录后再发起改写建议任务。";
+  }
+
+  if (errorCode === "JOB_NOT_FOUND" || errorCode === "NOT_FOUND") {
+    return "这个岗位不存在，或当前已经下线。";
+  }
+
+  if (
+    errorCode === "AI_SERVICE_UNAVAILABLE" ||
+    errorCode === "TASK_STORE_UNAVAILABLE" ||
+    errorCode === "WORKER_TIMEOUT"
+  ) {
+    return "改写建议依赖服务暂时不可用，请稍后重试。";
+  }
+
+  return task.error?.message || "改写建议任务没有成功，请稍后再试。";
 }
 
 export async function copyTextToClipboard(text: string) {

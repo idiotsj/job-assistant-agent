@@ -451,6 +451,49 @@
 - 第一版不做自动重试
 - stale `running` 任务会在 worker 启动时恢复为失败态
 - 当前第一条异步试点是岗位定向简历改写建议
+- 任务 DTO 现在会附带轻量 `subject` 元信息，当前第一版为：
+  - `{"kind":"job","id":"<jobId>"}`
+  - 用于前端刷新后按岗位恢复未完成任务
+
+## 3.3 同步与异步边界
+
+当前简历与岗位相关能力的推荐接入方式如下：
+
+- 保持同步：
+  - `POST /api/profile/resume/parse`
+  - `POST /api/profile/resume/diagnose`
+  - `POST /api/jobs/:id/resume/analyze`
+  - `POST /api/jobs/:id/resume/rewrite-suggestions`
+- 并行新增异步增强入口：
+  - `POST /api/jobs/:id/resume/rewrite-suggestions/tasks`
+  - `GET /api/ai/tasks`
+  - `GET /api/ai/tasks/:id`
+  - `GET /api/ai/tasks/ws`
+
+推荐前端接法：
+
+1. 同步岗位分析仍直接调用 `POST /api/jobs/:id/resume/analyze`
+2. 岗位改写建议优先走任务接口
+3. WebSocket 只做通知
+4. 最终结果一律以 `GET /api/ai/tasks/:id` 为准
+
+这样做的目的：
+
+- 保留原有短链路演示能力
+- 为长耗时 AI 能力提供更稳定的等待、恢复和通知模型
+- 不破坏现有公共业务路径和响应骨架
+
+## 3.4 当前联调和部署说明入口
+
+当前推荐一起查看：
+
+- [backend-progress-and-guidelines.md](/D:/code/work%20agent/apps/api/docs/backend-progress-and-guidelines.md)
+- [deployment-checklist.md](/D:/code/work%20agent/apps/api/docs/deployment-checklist.md)
+
+其中：
+
+- `backend-progress-and-guidelines.md` 负责说明真实实现状态和开发规范
+- `deployment-checklist.md` 负责说明最小运行进程、环境变量、反向代理和验收路径
 
 ## 4. 数据模型概要
 

@@ -1,9 +1,10 @@
 import type { Job, JobResumeAnalyzeResult, JobResumeRewriteSection, JobResumeRewriteSuggestionsResult } from "@job-assistant/contracts/jobs";
+import type { AiTaskStatus } from "@job-assistant/contracts/ai-tasks";
 
 export type JobDrawerSourceMode = "demo" | "live";
 export type JobDrawerSourceLabel = "demo" | "live" | "mixed";
 export type JobDrawerMessageTone = "info" | "success";
-export type JobDrawerActionStatus = "idle" | "analyzing" | "copying";
+export type JobDrawerActionStatus = "idle" | "creating" | "analyzing" | "copying";
 export type JobDrawerViewState =
   | "loading"
   | "unauthenticated"
@@ -38,6 +39,9 @@ export interface JobAnalysisDrawerData {
 export interface JobAnalysisDrawerStatus {
   sessionStatus: "loading" | "authenticated" | "unauthenticated";
   actionStatus: JobDrawerActionStatus;
+  rewriteTaskStatus: "idle" | AiTaskStatus;
+  activeTaskId: string | null;
+  taskChannel: "idle" | "websocket" | "polling";
   message: string;
   messageTone: JobDrawerMessageTone;
   errorMessage: string;

@@ -20,6 +20,11 @@ export const aiTaskErrorSchema = z.object({
 
 export const aiTaskResultSchema = z.union([jobResumeRewriteSuggestionsResultSchema, z.record(z.string(), z.unknown())]);
 
+export const aiTaskSubjectSchema = z.object({
+  kind: z.enum(["job"]),
+  id: z.string(),
+});
+
 export const aiTaskSchema = z.object({
   id: z.string(),
   capability: aiTaskCapabilitySchema,
@@ -27,6 +32,7 @@ export const aiTaskSchema = z.object({
   progress: aiTaskProgressSchema.nullable(),
   result: aiTaskResultSchema.nullable(),
   error: aiTaskErrorSchema.nullable(),
+  subject: aiTaskSubjectSchema.nullable().default(null),
   createdAt: z.string(),
   startedAt: z.string().nullable(),
   finishedAt: z.string().nullable(),
@@ -67,6 +73,7 @@ export type AiTaskStatus = z.infer<typeof aiTaskStatusSchema>;
 export type AiTaskProgress = z.infer<typeof aiTaskProgressSchema>;
 export type AiTaskError = z.infer<typeof aiTaskErrorSchema>;
 export type AiTaskResult = z.infer<typeof aiTaskResultSchema>;
+export type AiTaskSubject = z.infer<typeof aiTaskSubjectSchema>;
 export type AiTask = z.infer<typeof aiTaskSchema>;
 export type AiTaskListQuery = z.infer<typeof aiTaskListQuerySchema>;
 export type AiTaskCreated = z.infer<typeof aiTaskCreatedSchema>;

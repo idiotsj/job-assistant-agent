@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react";
 
 import type { JobDrawerMessageTone, JobDrawerViewState } from "../types";
+import { getAiTaskStatusLabel } from "../utils";
 
 function getStatusNote(
   sessionStatus: "loading" | "authenticated" | "unauthenticated",
@@ -32,12 +33,18 @@ function getStatusNote(
 export function JobAnalysisDrawerStatus({
   sessionStatus,
   viewState,
+  rewriteTaskStatus,
+  taskChannel,
+  activeTaskId,
   message,
   messageTone,
   errorMessage,
 }: {
   sessionStatus: "loading" | "authenticated" | "unauthenticated";
   viewState: JobDrawerViewState;
+  rewriteTaskStatus: "idle" | "pending" | "running" | "succeeded" | "failed" | "cancelled";
+  taskChannel: "idle" | "websocket" | "polling";
+  activeTaskId: string | null;
   message: string;
   messageTone: JobDrawerMessageTone;
   errorMessage: string;
@@ -55,6 +62,16 @@ export function JobAnalysisDrawerStatus({
           <Sparkles size={16} />
           <span>{statusNote}</span>
         </div>
+        {activeTaskId ? (
+          <div className="panel-note">
+            <Sparkles size={16} />
+            <span>
+              改写建议任务状态：{getAiTaskStatusLabel(rewriteTaskStatus)}
+              {taskChannel === "websocket" ? "，当前通过 WebSocket 接收通知。" : ""}
+              {taskChannel === "polling" ? "，当前已降级为轮询刷新。" : ""}
+            </span>
+          </div>
+        ) : null}
         <div className="panel-note">
           <Sparkles size={16} />
           <span>AI 结果是辅助建议，不替代你对岗位取舍与简历表述的最终判断。</span>

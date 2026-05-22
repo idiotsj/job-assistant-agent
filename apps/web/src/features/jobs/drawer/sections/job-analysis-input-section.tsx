@@ -14,7 +14,7 @@ export function JobAnalysisInputSection({
 }: {
   sessionStatus: "loading" | "authenticated" | "unauthenticated";
   rawText: string;
-  actionStatus: "idle" | "analyzing" | "copying";
+  actionStatus: "idle" | "creating" | "analyzing" | "copying";
   resultStale: boolean;
   onRawTextChange: (nextValue: string) => void;
   onAnalyze: () => Promise<void>;
@@ -23,7 +23,7 @@ export function JobAnalysisInputSection({
     <div className="resume-input">
       <div className="field-group">
         <span className="field-label">当前投递用简历原文</span>
-        <p className="drawer-copy">这里仍然只接收纯文本内容；每次点击按钮都会把当前文本重新提交给岗位分析接口。</p>
+        <p className="drawer-copy">这里仍然只接收纯文本内容；每次点击按钮都会同步刷新岗位分析，并异步创建改写建议任务。</p>
         <Textarea value={rawText} onChange={(event) => onRawTextChange(event.target.value)} />
       </div>
 
@@ -45,9 +45,9 @@ export function JobAnalysisInputSection({
         </div>
       ) : null}
 
-      <Button loading={actionStatus === "analyzing"} onClick={() => void onAnalyze()}>
+      <Button loading={actionStatus === "analyzing" || actionStatus === "creating"} onClick={() => void onAnalyze()}>
         <Sparkles size={16} />
-        一键评估投递成功率
+        {actionStatus === "creating" ? "正在创建改写任务" : "一键评估投递成功率"}
       </Button>
     </div>
   );

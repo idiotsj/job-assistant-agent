@@ -3,7 +3,7 @@ import { createServerWorkflows } from "@/app/create-workflows";
 import type { ServerAppContext, ServerRepositories } from "@/app/contracts";
 import type { AiServiceClient } from "@/integrations/ai-service/client";
 import { type AiTaskRepository } from "@/modules/ai-tasks/repository";
-import { aiTaskSchema, type AiTask, type AiTaskError, type AiTaskProgress } from "@/modules/ai-tasks/schema";
+import { aiTaskSchema, type AiTask, type AiTaskCapability, type AiTaskError, type AiTaskProgress, type AiTaskSubject } from "@/modules/ai-tasks/schema";
 import { type AuthRepository } from "@/modules/auth/repository";
 import { type AuthUser } from "@/modules/auth/schema";
 import { type CaseRepository } from "@/modules/cases/repository";
@@ -45,6 +45,17 @@ interface CreateTestAppContextOptions {
 function paginate<T>(items: T[], page: number, limit: number) {
   const start = (page - 1) * limit;
   return items.slice(start, start + limit);
+}
+
+function getTestTaskSubject(capability: AiTaskCapability, payloadJson: Record<string, unknown>): AiTaskSubject | null {
+  switch (capability) {
+    case "job_resume_rewrite": {
+      const jobId = typeof payloadJson.jobId === "string" ? payloadJson.jobId : null;
+      return jobId ? { kind: "job", id: jobId } : null;
+    }
+    default:
+      return null;
+  }
 }
 
 const defaultSeed: TestSeed = {
@@ -380,6 +391,7 @@ export function createTestAppContext(
         progress: null,
         result: null,
         error: null,
+        subject: getTestTaskSubject(input.capability, input.payloadJson),
         createdAt: new Date().toISOString(),
         startedAt: null,
         finishedAt: null,

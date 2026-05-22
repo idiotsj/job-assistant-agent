@@ -1,6 +1,6 @@
 import { type DbClient, unsafeQuery } from "@/core/db/client";
 import { normalizeDbRow } from "@/core/db/query-helpers";
-import { aiTaskSchema, type AiTask, type AiTaskCapability, type AiTaskError, type AiTaskListQuery, type AiTaskProgress, type AiTaskStatus } from "@/modules/ai-tasks/schema";
+import { aiTaskSchema, type AiTask, type AiTaskCapability, type AiTaskError, type AiTaskListQuery, type AiTaskProgress, type AiTaskStatus, type AiTaskSubject } from "@/modules/ai-tasks/schema";
 import { type ListResult } from "@/modules/shared/types";
 
 interface CreateTaskInput {
@@ -49,6 +49,8 @@ type AiTaskRow = {
 };
 
 function mapTaskRow(row: AiTaskRow): AiTask {
+  const subject = getTaskSubject(row.capability, row.payloadJson);
+
   return aiTaskSchema.parse({
     id: row.id,
     capability: row.capability,
@@ -56,6 +58,7 @@ function mapTaskRow(row: AiTaskRow): AiTask {
     progress: row.progressJson ?? null,
     result: row.resultJson ?? null,
     error: row.errorJson ?? null,
+    subject,
     createdAt: row.createdAt,
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
@@ -70,6 +73,26 @@ function mapClaimedTask(row: AiTaskRow): ClaimedAiTask {
     payloadJson: row.payloadJson,
     requestId: row.requestId,
   };
+}
+
+function getTaskSubject(capability: AiTaskCapability, payloadJson: Record<string, unknown>): AiTaskSubject | null {
+  switch (capability) {
+    case "job_resume_rewrite": {
+      const directJobId = typeof payloadJson.jobId === "string" ? payloadJson.jobId : null;
+      const nestedJobId =
+        payloadJson.input &&
+        typeof payloadJson.input === "object" &&
+        payloadJson.input !== null &&
+        "jobId" in payloadJson.input &&
+        typeof (payloadJson.input as Record<string, unknown>).jobId === "string"
+          ? ((payloadJson.input as Record<string, unknown>).jobId as string)
+          : null;
+      const jobId = directJobId ?? nestedJobId;
+      return jobId ? { kind: "job", id: jobId } : null;
+    }
+    default:
+      return null;
+  }
 }
 
 const taskColumns = `

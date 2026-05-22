@@ -19,6 +19,7 @@ export type {
   AiTaskProgress,
   AiTaskResult,
   AiTaskStatus,
+  AiTaskSubject,
   AiTaskWsErrorEvent,
   AiTaskWsSubscribeMessage,
   AiTaskWsUpdatedEvent,

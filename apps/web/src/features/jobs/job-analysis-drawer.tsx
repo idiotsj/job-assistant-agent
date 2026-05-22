@@ -57,6 +57,9 @@ export function JobAnalysisDrawer({
               <JobAnalysisDrawerStatus
                 sessionStatus={status.sessionStatus}
                 viewState={status.viewState}
+                rewriteTaskStatus={status.rewriteTaskStatus}
+                taskChannel={status.taskChannel}
+                activeTaskId={status.activeTaskId}
                 message={status.message}
                 messageTone={status.messageTone}
                 errorMessage={status.errorMessage}

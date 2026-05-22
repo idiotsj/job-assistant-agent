@@ -1,11 +1,19 @@
 "use client";
 
-import type { Job } from "@job-assistant/contracts/jobs";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import type { AiTaskStatus } from "@job-assistant/contracts/ai-tasks";
+import type { Job, JobResumeRewriteSuggestionsResult } from "@job-assistant/contracts/jobs";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuthSession } from "@/components/providers/auth-provider";
 import { demoJobAnalysis, demoJobRewriteSuggestions, demoResumeText } from "@/features/shared/demo-data";
-import { analyzeJobResume, getJobResumeRewriteSuggestions } from "@/lib/api/jobs";
+import {
+  createJobResumeRewriteTask,
+  findLatestAiTaskForJob,
+  getAiTask,
+  listAiTasks,
+  subscribeAiTaskUpdates,
+} from "@/lib/api/ai-tasks";
+import { analyzeJobResume } from "@/lib/api/jobs";
 
 import type { JobAnalysisDrawerActions, JobAnalysisDrawerData, JobAnalysisDrawerStatus } from "../types";
 import {
@@ -13,6 +21,8 @@ import {
   buildAdoptedSuggestions,
   buildAdoptedSuggestionsText,
   copyTextToClipboard,
+  getAiTaskFailureMessage,
+  getAiTaskPendingMessage,
   getJobAnalysisActionError,
   getSourceLabel,
   getViewState,
@@ -25,7 +35,12 @@ interface JobAnalysisDrawerController {
   actions: JobAnalysisDrawerActions;
 }
 
-const initialMessage = "当前先展示结构预览；登录后可把岗位分析和改写建议切到真实接口结果。";
+const initialMessage = "当前先展示结构预览；登录后可切到真实岗位分析，并通过异步任务拿到改写建议。";
+const terminalTaskStatuses = new Set<AiTaskStatus>(["succeeded", "failed", "cancelled"]);
+
+function isRewriteTaskResult(result: unknown): result is JobResumeRewriteSuggestionsResult {
+  return Boolean(result && typeof result === "object" && "rewriteSuggestions" in result);
+}
 
 export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerController {
   const { status: sessionStatus } = useAuthSession();
@@ -34,13 +49,20 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
   const [rewrite, setRewrite] = useState(demoJobRewriteSuggestions);
   const [analysisMode, setAnalysisMode] = useState<"demo" | "live">("demo");
   const [rewriteMode, setRewriteMode] = useState<"demo" | "live">("demo");
-  const [actionStatus, setActionStatus] = useState<"idle" | "analyzing" | "copying">("idle");
+  const [actionStatus, setActionStatus] = useState<"idle" | "creating" | "analyzing" | "copying">("idle");
   const [message, setMessage] = useState(initialMessage);
   const [messageTone, setMessageTone] = useState<"info" | "success">("info");
   const [errorMessage, setErrorMessage] = useState("");
   const [resultStale, setResultStale] = useState(false);
   const [adoptedSuggestionKeys, setAdoptedSuggestionKeys] = useState<string[]>([]);
   const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [rewriteTaskStatus, setRewriteTaskStatus] = useState<"idle" | AiTaskStatus>("idle");
+  const [taskChannel, setTaskChannel] = useState<"idle" | "websocket" | "polling">("idle");
+
+  const pollTimerRef = useRef<number | null>(null);
+  const subscriptionRef = useRef<{ close: () => void } | null>(null);
+  const rewriteTaskStatusRef = useRef<"idle" | AiTaskStatus>("idle");
 
   const skillRows = useMemo(() => (job ? normalizeSkillMatches(job, analysis) : []), [analysis, job]);
   const adoptedSuggestions = useMemo(
@@ -49,6 +71,146 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
   );
   const sourceLabel = getSourceLabel(analysisMode, rewriteMode);
   const actionChecklist = useMemo(() => buildActionChecklist(analysis, rewrite), [analysis, rewrite]);
+
+  function clearTaskWatcher() {
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+
+    if (subscriptionRef.current) {
+      subscriptionRef.current.close();
+      subscriptionRef.current = null;
+    }
+  }
+
+  function resetTaskState() {
+    clearTaskWatcher();
+    setActiveTaskId(null);
+    setRewriteTaskStatus("idle");
+    rewriteTaskStatusRef.current = "idle";
+    setTaskChannel("idle");
+  }
+
+  async function refreshTask(taskId: string) {
+    const task = await getAiTask(taskId);
+    const taskResult = task.result;
+
+    startTransition(() => {
+      setActiveTaskId(task.id);
+      setRewriteTaskStatus(task.status);
+    });
+    rewriteTaskStatusRef.current = task.status;
+
+    if (task.status === "succeeded" && isRewriteTaskResult(taskResult)) {
+      startTransition(() => {
+        setRewrite(taskResult);
+        setRewriteMode("live");
+        setResultStale(false);
+        setMessage("改写建议异步任务已完成，当前结果已刷新为真实建议。");
+        setMessageTone("success");
+        setErrorMessage("");
+        setAdoptedSuggestionKeys([]);
+        setCopiedTarget(null);
+      });
+      clearTaskWatcher();
+      setTaskChannel("idle");
+      return task;
+    }
+
+    if (task.status === "failed" || task.status === "cancelled") {
+      startTransition(() => {
+        setRewrite(demoJobRewriteSuggestions);
+        setRewriteMode("demo");
+        setMessage("");
+        setErrorMessage(getAiTaskFailureMessage(task));
+      });
+      clearTaskWatcher();
+      setTaskChannel("idle");
+      return task;
+    }
+
+    startTransition(() => {
+      setMessage(getAiTaskPendingMessage(task, taskChannel === "idle" ? "polling" : taskChannel));
+      setMessageTone("info");
+      setErrorMessage("");
+    });
+
+    return task;
+  }
+
+  function schedulePolling(taskId: string, delayMs = 1500) {
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+    }
+
+    pollTimerRef.current = window.setTimeout(async () => {
+      try {
+        const task = await refreshTask(taskId);
+        if (!task || terminalTaskStatuses.has(task.status)) {
+          return;
+        }
+        schedulePolling(taskId);
+      } catch (error) {
+        startTransition(() => {
+          setErrorMessage(getJobAnalysisActionError(error, "rewrite"));
+          setMessage("改写建议任务状态暂时没同步到，当前先保留已有结果。");
+          setMessageTone("info");
+        });
+      }
+    }, delayMs);
+  }
+
+  function startTaskMonitoring(taskId: string) {
+    clearTaskWatcher();
+    setActiveTaskId(taskId);
+    setTaskChannel("websocket");
+
+    const subscription = subscribeAiTaskUpdates({
+      taskIds: [taskId],
+      onUpdated: (event) => {
+        startTransition(() => {
+          setRewriteTaskStatus(event.status);
+          setMessage(
+            event.progress?.message ??
+              (event.status === "pending" ? "改写建议任务已创建，正在排队。" : "改写建议任务执行中。"),
+          );
+          setMessageTone("info");
+        });
+        rewriteTaskStatusRef.current = event.status;
+
+        if (terminalTaskStatuses.has(event.status)) {
+          void refreshTask(taskId);
+        }
+      },
+      onError: () => {
+        subscriptionRef.current?.close();
+        subscriptionRef.current = null;
+        startTransition(() => {
+          setTaskChannel("polling");
+        });
+        schedulePolling(taskId, 500);
+      },
+      onClose: () => {
+        if (rewriteTaskStatusRef.current !== "idle" && terminalTaskStatuses.has(rewriteTaskStatusRef.current)) {
+          return;
+        }
+
+        startTransition(() => {
+          setTaskChannel("polling");
+        });
+        schedulePolling(taskId, 500);
+      },
+    });
+
+    subscriptionRef.current = subscription;
+  }
+
+  useEffect(() => {
+    return () => {
+      clearTaskWatcher();
+    };
+  }, []);
 
   useEffect(() => {
     if (!copiedTarget) {
@@ -67,6 +229,7 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
       return;
     }
 
+    resetTaskState();
     setRawText(demoResumeText);
     setAnalysis(demoJobAnalysis);
     setRewrite(demoJobRewriteSuggestions);
@@ -80,6 +243,61 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
     setAdoptedSuggestionKeys([]);
     setCopiedTarget(null);
   }, [job?.id]);
+
+  useEffect(() => {
+    async function recoverTask() {
+      if (!job || sessionStatus !== "authenticated") {
+        return;
+      }
+
+      try {
+        const tasks = await listAiTasks({
+          capability: "job_resume_rewrite",
+          limit: 20,
+        });
+        const latestTask = findLatestAiTaskForJob(tasks, job.id);
+        if (!latestTask) {
+          return;
+        }
+
+        setActiveTaskId(latestTask.id);
+        setRewriteTaskStatus(latestTask.status);
+        rewriteTaskStatusRef.current = latestTask.status;
+
+        if (terminalTaskStatuses.has(latestTask.status)) {
+          const latestTaskResult = latestTask.result;
+
+          if (latestTask.status === "succeeded" && isRewriteTaskResult(latestTaskResult)) {
+            startTransition(() => {
+              setRewrite(latestTaskResult);
+              setRewriteMode("live");
+              setMessage("已恢复当前岗位最近一次完成的改写建议结果。");
+              setMessageTone("success");
+              setErrorMessage("");
+            });
+            return;
+          }
+
+          if (latestTask.status === "failed" || latestTask.status === "cancelled") {
+            startTransition(() => {
+              setErrorMessage(getAiTaskFailureMessage(latestTask));
+            });
+            return;
+          }
+        }
+
+        startTransition(() => {
+          setMessage(getAiTaskPendingMessage(latestTask, "polling"));
+          setMessageTone("info");
+        });
+        startTaskMonitoring(latestTask.id);
+      } catch {
+        // Silent recovery failure: the drawer can still work through fresh task creation.
+      }
+    }
+
+    void recoverTask();
+  }, [job?.id, sessionStatus]);
 
   function updateRawText(nextValue: string) {
     const changed = rawText !== nextValue;
@@ -145,58 +363,61 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
     setMessage("");
     setErrorMessage("");
 
-    const [analysisResult, rewriteResult] = await Promise.allSettled([
-      analyzeJobResume(job.id, { rawText, fileName: "resume.txt" }),
-      getJobResumeRewriteSuggestions(job.id, { rawText, fileName: "resume.txt" }),
-    ]);
+    try {
+      const analysisResult = await analyzeJobResume(job.id, { rawText, fileName: "resume.txt" });
 
-    const analysisSucceeded = analysisResult.status === "fulfilled";
-    const rewriteSucceeded = rewriteResult.status === "fulfilled";
-    const errors: string[] = [];
-
-    if (!analysisSucceeded) {
-      errors.push(getJobAnalysisActionError(analysisResult.reason, "analysis"));
-    }
-
-    if (!rewriteSucceeded) {
-      errors.push(getJobAnalysisActionError(rewriteResult.reason, "rewrite"));
-    }
-
-    startTransition(() => {
-      setAnalysis(analysisSucceeded ? analysisResult.value : demoJobAnalysis);
-      setRewrite(rewriteSucceeded ? rewriteResult.value : demoJobRewriteSuggestions);
-      setAnalysisMode(analysisSucceeded ? "live" : "demo");
-      setRewriteMode(rewriteSucceeded ? "live" : "demo");
+      startTransition(() => {
+        setAnalysis(analysisResult);
+        setAnalysisMode("live");
+        setResultStale(false);
+        setAdoptedSuggestionKeys([]);
+        setCopiedTarget(null);
+      });
+    } catch (error) {
+      startTransition(() => {
+        setAnalysis(demoJobAnalysis);
+        setAnalysisMode("demo");
+        setErrorMessage(getJobAnalysisActionError(error, "analysis"));
+      });
       setActionStatus("idle");
-      setResultStale(false);
-      setAdoptedSuggestionKeys([]);
-      setCopiedTarget(null);
+      return;
+    }
 
-      if (analysisSucceeded && rewriteSucceeded) {
-        setMessage("岗位分析和改写建议都已切换到真实结果。");
+    setActionStatus("creating");
+
+    try {
+      const task = await createJobResumeRewriteTask(job.id, { rawText, fileName: "resume.txt" });
+
+      startTransition(() => {
+        setActiveTaskId(task.taskId);
+        setRewriteTaskStatus(task.status);
+        setRewrite(demoJobRewriteSuggestions);
+        setRewriteMode("demo");
+        setTaskChannel("websocket");
+        setMessage("真实岗位分析已完成，改写建议任务已创建，正在等待结果。");
         setMessageTone("success");
         setErrorMessage("");
-        return;
-      }
+      });
+      rewriteTaskStatusRef.current = task.status;
 
-      if (analysisSucceeded || rewriteSucceeded) {
-        setMessage(
-          analysisSucceeded
-            ? "已拿到真实岗位分析结果；改写建议暂时保留演示内容。"
-            : "已拿到真实改写建议；岗位分析暂时保留演示内容。",
-        );
+      startTaskMonitoring(task.taskId);
+    } catch (error) {
+      startTransition(() => {
+        setRewrite(demoJobRewriteSuggestions);
+        setRewriteMode("demo");
+        setRewriteTaskStatus("idle");
+        setTaskChannel("idle");
+        setMessage("已拿到真实岗位分析结果；改写建议任务暂时没创建成功。");
         setMessageTone("success");
-        setErrorMessage(errors.join(" "));
-        return;
-      }
-
-      setMessage("");
-      setMessageTone("info");
-      setErrorMessage(errors.join(" "));
-    });
+        setErrorMessage(getJobAnalysisActionError(error, "rewrite"));
+      });
+    } finally {
+      setActionStatus("idle");
+    }
   }
 
   function resetToDemo() {
+    resetTaskState();
     setRawText(demoResumeText);
     setAnalysis(demoJobAnalysis);
     setRewrite(demoJobRewriteSuggestions);
@@ -266,7 +487,11 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
       return;
     }
 
-    await copyText("adopted", buildAdoptedSuggestionsText(adoptedSuggestions), "已复制当前采纳预览，可粘贴到你的简历编辑器里继续细修。");
+    await copyText(
+      "adopted",
+      buildAdoptedSuggestionsText(adoptedSuggestions),
+      "已复制当前采纳预览，可粘贴到你的简历编辑器里继续细修。",
+    );
   }
 
   async function copyStandaloneText(target: "headline" | "summary", text: string) {
@@ -297,6 +522,9 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
     status: {
       sessionStatus,
       actionStatus,
+      rewriteTaskStatus,
+      activeTaskId,
+      taskChannel,
       message,
       messageTone,
       errorMessage,

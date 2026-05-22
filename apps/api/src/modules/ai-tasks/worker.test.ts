@@ -123,6 +123,10 @@ describe("ai task worker", () => {
     expect(task.status).toBe("succeeded");
     expect(task.result).not.toBeNull();
     expect(task.progress?.step).toBe("completed");
+    expect(task.subject).toEqual({
+      kind: "job",
+      id: "job-1",
+    });
   });
 
   it("preserves stable app error codes on async task failure", async () => {
