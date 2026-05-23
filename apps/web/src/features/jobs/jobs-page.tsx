@@ -103,7 +103,11 @@ function MarketTrendChart() {
   });
 
   const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaPath = `${linePath} L ${points[points.length - 1].x} ${pad.top + chartH} L ${points[0].x} ${pad.top + chartH} Z`;
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  const areaPath = firstPoint && lastPoint
+    ? `${linePath} L ${lastPoint.x} ${pad.top + chartH} L ${firstPoint.x} ${pad.top + chartH} Z`
+    : "";
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="market-trend__svg">

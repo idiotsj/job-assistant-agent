@@ -386,6 +386,12 @@ textarea {
   opacity: 0.72;
 }
 
+.wa-button--xs {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+}
+
 .wa-button--sm {
   min-height: 36px;
   padding: 0 14px;
@@ -400,6 +406,15 @@ textarea {
 .wa-button--lg {
   min-height: 48px;
   padding: 0 20px;
+}
+
+.wa-button--icon-sm {
+  min-height: 32px;
+  width: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .wa-button--primary {
