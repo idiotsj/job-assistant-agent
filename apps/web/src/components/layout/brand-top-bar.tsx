@@ -1,11 +1,12 @@
 "use client";
 
-import { Bell, ChevronDown, LogIn, LogOut, Sparkles, UserRound } from "lucide-react";
+import { Bell, ChevronDown, LogIn, LogOut, Moon, Sparkles, Sun, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { useAuthSession } from "@/components/providers/auth-provider";
+import { useTheme } from "@/hooks/use-theme";
 
 function formatDateString(): string {
   const now = new Date();
@@ -20,6 +21,7 @@ function formatDateString(): string {
 export function BrandTopBar() {
   const router = useRouter();
   const { user, status, logoutSession } = useAuthSession();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,6 +83,15 @@ export function BrandTopBar() {
       <div className="brand-top-bar__right">
         <button type="button" className="brand-top-bar__notification" aria-label="通知">
           <Bell size={20} />
+        </button>
+
+        <button
+          type="button"
+          className="brand-top-bar__theme-toggle"
+          aria-label={theme === "dark" ? "切换白天模式" : "切换黑夜模式"}
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
         <div className="brand-top-bar__account" ref={menuRef}>

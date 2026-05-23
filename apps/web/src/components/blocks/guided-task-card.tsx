@@ -54,9 +54,9 @@ export function GuidedTaskCard({
           size="lg"
           onClick={primaryAction?.onClick}
           style={{
-            background: "hsl(var(--text-primary))",
+            background: "hsl(var(--primary))",
             color: "white",
-            boxShadow: "0 12px 28px rgba(34, 48, 88, 0.18)",
+            boxShadow: "0 12px 28px rgba(62, 129, 229, 0.25)",
             border: "none",
           }}
         >
