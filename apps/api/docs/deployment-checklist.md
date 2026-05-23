@@ -8,7 +8,7 @@
 - 避免出现“本地能跑，但云端少进程、少变量、少代理配置”的问题
 - 明确当前异步 AI 任务链路需要的最小运行组合
 
-最后更新：`2026-05-08`
+最后更新：`2026-05-23`
 
 ## 1. 当前最小运行组合
 
@@ -121,11 +121,22 @@ cd "D:\code\work agent"
 pnpm dev:api
 ```
 
+说明：
+
+- `pnpm dev:api` 会通过 `tsx --env-file=.env` 自动读取 `apps/api/.env`
+
 启动 `api worker`：
 
 ```powershell
 cd "D:\code\work agent"
 pnpm --filter api dev:worker
+```
+
+也可以直接使用：
+
+```powershell
+cd "D:\code\work agent"
+pnpm dev:worker
 ```
 
 启动 `web`：

@@ -15,8 +15,6 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "isolatedModules": true,
-    "ignoreDeprecations": "6.0",
-    "baseUrl": "."
+    "isolatedModules": true
   }
 }

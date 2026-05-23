@@ -16,7 +16,7 @@
 - `packages/database`
 - 未来的 `apps/ingest`
 
-最后更新：`2026-05-08`
+最后更新：`2026-05-23`
 
 ## 1. 当前项目判断
 
@@ -169,7 +169,9 @@ packages/database  -> schema / seed / migrations
 - `pnpm --filter api typecheck`
 - `pnpm --filter api test`
 - `pnpm --filter api build`
+- `pnpm --filter web test`
 - `pnpm --filter web typecheck`
+- `pnpm typecheck`
 - `python -m pytest apps/ai-service/tests`
 
 除此之外，还需要做联调验证：

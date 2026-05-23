@@ -40,6 +40,7 @@
 - `AI_SERVICE_URL` 不配置时，首页推荐会回退到 TypeScript 规则打分
 - `AI_INTERNAL_SERVICE_TOKEN` 用于 `apps/api -> apps/ai-service` 的服务间鉴权
 - `AI_SERVICE_TIMEOUT_MS` 用于控制内部 Python AI 服务调用超时
+- `pnpm dev:api` 与 `pnpm --filter api dev:worker` 会自动读取 `apps/api/.env`
 
 示例见：
 
@@ -445,6 +446,7 @@
 
 - `pnpm --filter api dev:worker`
 - `pnpm --filter api start:worker`
+- `pnpm dev:worker`
 
 说明：
 
