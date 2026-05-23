@@ -47,6 +47,7 @@ export interface HomeDashboardData {
   recommendation: HomeRecommendation;
   todayContent: TodayContent;
   timelinePreview: ScheduleItem[];
+  schedule: ScheduleItem[];
   heroAdvice: TodayContent["dailyAdvice"];
   featuredCompany: Company | null;
   featuredJobs: TodayContent["featuredJobs"];

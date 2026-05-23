@@ -19,6 +19,7 @@ import { GET as getTodayContent } from "@/routes/daily-content/today/route";
 import { GET as getEvents } from "@/routes/events/route";
 import { GET as getJobs } from "@/routes/jobs/route";
 import { GET as getJob } from "@/routes/jobs/[id]/route";
+import { GET as getInterviewPractice } from "@/routes/interview/practice/route";
 import { POST as postJobResumeAnalyze } from "@/routes/jobs/[id]/resume/analyze/route";
 import { POST as postJobResumeRewriteSuggestions } from "@/routes/jobs/[id]/resume/rewrite-suggestions/route";
 import { GET as getPostgraduateAdvice } from "@/routes/postgraduate/advice/route";
@@ -200,6 +201,7 @@ export async function registerApiRoutes(app: FastifyInstance) {
   registerWebRoute(app, "GET", "/api/recommend/home", getRecommendHome);
   registerWebRoute(app, "GET", "/api/jobs", getJobs);
   registerWebRoute(app, "GET", "/api/jobs/:id", getJob);
+  registerWebRoute(app, "GET", "/api/interview/practice", getInterviewPractice);
   registerWebRoute(app, "POST", "/api/jobs/:id/resume/analyze", postJobResumeAnalyze);
   registerWebRoute(app, "POST", "/api/jobs/:id/resume/rewrite-suggestions", postJobResumeRewriteSuggestions);
   registerWebRoute(app, "POST", "/api/jobs/:id/resume/rewrite-suggestions/tasks", postJobResumeRewriteTask);

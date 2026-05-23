@@ -12,6 +12,7 @@
     "./daily-content": "./src/daily-content.ts",
     "./events": "./src/events.ts",
     "./http": "./src/http.ts",
+    "./interview": "./src/interview.ts",
     "./jobs": "./src/jobs.ts",
     "./postgraduate": "./src/postgraduate.ts",
     "./profile": "./src/profile.ts",
@@ -26,6 +27,6 @@
   },
   "devDependencies": {
     "@types/node": "25.5.2",
-    "typescript": "6.0.2"
+    "typescript": "6.0.3"
   }
 }

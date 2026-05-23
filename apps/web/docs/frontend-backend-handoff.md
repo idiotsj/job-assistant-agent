@@ -39,7 +39,8 @@ packages/
 ### 1.3 当前明确未完成的部分
 
 - `apps/ingest` 不是当前可运行能力
-- `/interview` 目前只是前端占位入口，不代表后端已完成该业务域
+- `/interview` 与 `/interview/practice` 当前仍是占位工作区
+- 后端现已提供 `GET /api/interview/practice`，但它只返回占位工作区元数据，不代表正式面试业务域已完成
 - `apps/admin` 仍未实现
 
 ## 2. 当前可联调能力
@@ -57,6 +58,7 @@ packages/
 - 岗位定向简历分析
 - 岗位定向改写建议
 - 改写建议异步任务版接口
+- 面试模拟练习区占位接口
 - 企业、案例、活动
 - 日程聚合
 - 考研频道
@@ -357,7 +359,8 @@ $env:API_PROXY_TARGET="http://localhost:3001"
 ### 8.5 `/interview`
 
 - 当前只能当作占位入口和未来工作区预留
-- 不应向用户暗示后端能力已上线
+- 可联调占位接口：`GET /api/interview/practice`
+- 不应向用户暗示真实面试训练、题目流或评分后端已上线
 
 ## 9. 当前容易踩坑的点
 

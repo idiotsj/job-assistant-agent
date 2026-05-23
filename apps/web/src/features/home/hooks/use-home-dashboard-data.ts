@@ -244,6 +244,7 @@ export function useHomeDashboardData(): HomeDashboardController {
       recommendation,
       todayContent,
       timelinePreview,
+      schedule: state.schedule,
       heroAdvice,
       featuredCompany,
       featuredJobs,

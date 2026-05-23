@@ -8,7 +8,7 @@
 - 避免出现“本地能跑，但云端少进程、少变量、少代理配置”的问题
 - 明确当前异步 AI 任务链路需要的最小运行组合
 
-最后更新：`2026-05-08`
+最后更新：`2026-05-23`
 
 ## 1. 当前最小运行组合
 
@@ -121,11 +121,22 @@ cd "D:\code\work agent"
 pnpm dev:api
 ```
 
+说明：
+
+- `pnpm dev:api` 会通过 `tsx --env-file=.env` 自动读取 `apps/api/.env`
+
 启动 `api worker`：
 
 ```powershell
 cd "D:\code\work agent"
 pnpm --filter api dev:worker
+```
+
+也可以直接使用：
+
+```powershell
+cd "D:\code\work agent"
+pnpm dev:worker
 ```
 
 启动 `web`：
@@ -181,6 +192,6 @@ pnpm dev:web
 ## 8. 当前明确不应误解为已完成的能力
 
 - `apps/ingest` 不是本轮可部署能力
-- `/interview` 目前仍是前端占位入口，不是正式后端业务域
+- `/interview` / `/interview/practice` 当前仍是占位工作区，只有轻量占位接口，不是正式后端业务域
 - WebSocket 只是通知通道，不是权威结果源
 - 没有 worker 时，异步任务接口只能创建任务，不能完成执行

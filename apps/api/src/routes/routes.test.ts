@@ -10,6 +10,7 @@ import { GET as getCompany } from "@/routes/companies/[id]/route";
 import { GET as getCivilServiceAdvice } from "@/routes/civil-service/advice/route";
 import { GET as getTodayContent } from "@/routes/daily-content/today/route";
 import { GET as getEvents } from "@/routes/events/route";
+import { GET as getInterviewPractice } from "@/routes/interview/practice/route";
 import { GET as getJobs } from "@/routes/jobs/route";
 import { POST as postJobResumeAnalyze } from "@/routes/jobs/[id]/resume/analyze/route";
 import { POST as postJobResumeRewriteSuggestions } from "@/routes/jobs/[id]/resume/rewrite-suggestions/route";
@@ -28,6 +29,7 @@ import {
   jobResumeRewriteSuggestionsInputSchema,
   jobResumeRewriteSuggestionsResultSchema,
 } from "@/modules/jobs/schema";
+import { interviewPracticeWorkspaceSchema } from "@job-assistant/contracts/interview";
 
 afterEach(() => {
   setServerAppContextForTesting(undefined);
@@ -1020,6 +1022,33 @@ describe("api routes", () => {
     const eventsPayload = await eventsResponse.json();
     expect(eventsResponse.status).toBe(200);
     expect(eventsPayload.data[0].city).toBe("上海");
+  });
+
+  it("serves interview practice placeholder workspace for authenticated users", async () => {
+    setServerAppContextForTesting(createTestAppContext());
+
+    const response = await getInterviewPractice(
+      new Request("http://localhost/api/interview/practice", {
+        headers: {
+          "x-user-id": "user-1",
+        },
+      }),
+    );
+
+    const payload = await response.json();
+    const parsed = interviewPracticeWorkspaceSchema.parse(payload.data);
+
+    expect(response.status).toBe(200);
+    expect(parsed.status).toBe("building");
+    expect(parsed.availableModules.length).toBeGreaterThan(0);
+    expect(parsed.suggestion.ctaLabel).toContain("继续");
+  });
+
+  it("guards interview practice placeholder workspace behind auth", async () => {
+    setServerAppContextForTesting(createTestAppContext());
+
+    const response = await getInterviewPractice(new Request("http://localhost/api/interview/practice"));
+    expect(response.status).toBe(401);
   });
 
   it("excludes expired jobs from list, home recommendations, and schedule timeline", async () => {

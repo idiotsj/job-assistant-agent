@@ -120,9 +120,9 @@ export function AdviceChannelPage<T extends AdviceItem>({
               <h2>{helperCopy}</h2>
               <p>{actionHint}</p>
               <div className="tag-wall">
-                {items
-                  .slice(0, 3)
-                  .flatMap((item) => getTargets(item))
+                {Array.from(
+                  new Set(items.slice(0, 3).flatMap((item) => getTargets(item)))
+                )
                   .slice(0, 6)
                   .map((target) => (
                     <span className="suggestion-chip" key={`${channelLabel}-${target}`}>
