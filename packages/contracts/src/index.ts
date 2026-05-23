@@ -6,6 +6,7 @@ export * from "./companies";
 export * from "./daily-content";
 export * from "./events";
 export * from "./http";
+export * from "./interview";
 export * from "./jobs";
 export * from "./postgraduate";
 export * from "./profile";

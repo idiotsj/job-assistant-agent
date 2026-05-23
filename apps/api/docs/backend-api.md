@@ -142,6 +142,7 @@
 - `POST /api/profile/resume/parse`
 - `POST /api/profile/resume/diagnose`
 - `GET /api/recommend/home`
+- `GET /api/interview/practice`
 - `GET /api/jobs`
 - `GET /api/jobs/:id`
 - `POST /api/jobs/:id/resume/analyze`
@@ -168,6 +169,26 @@
 - 首页推荐仍返回分区对象，而不是统一 feed
 - 受保护接口统一通过 Cookie Session 识别用户
 - 首页岗位推荐支持 Python AI 增强打分；若内部 AI 服务不可用，会自动降级到后端内置规则
+- `interview` 当前只开放占位工作区读取接口，不代表完整面试业务域已经上线
+
+### `GET /api/interview/practice`
+
+- 说明：返回面试模拟练习区的占位工作区元数据，供前端在 `/interview/practice` 使用真实后端接口联调
+- 鉴权：需要
+
+响应中的 `data` 包含：
+
+- `status`
+- `title`
+- `summary`
+- `availableModules`
+- `suggestion`
+- `recommendedActions`
+
+行为边界：
+
+- 当前仅返回占位工作区信息，不提供真实题目流、实时对话、音视频或评分能力
+- 该接口的作用是让前端工作区有真实 `/api` 入口可接，同时保持“功能建设中”的语义边界
 
 ### `POST /api/profile/resume/parse`
 

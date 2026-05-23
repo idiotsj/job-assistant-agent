@@ -2,7 +2,7 @@
 
 本文档用于持续同步 `apps/web` 前端实现进度与当前后端真实能力状态。
 
-最后更新：`2026-05-08`
+最后更新：`2026-05-23`
 
 ## 1. 使用规则
 
@@ -43,7 +43,7 @@
 | 企业 / 案例 / 活动 | ready | doing | 基础接口可联调 | 继续收口页面层级与引用关系 |
 | 日程 | ready | doing | 聚合与 CRUD 可用 | 继续区分来源与周视图状态 |
 | 考研 / 考公频道 | ready | doing | 独立频道接口可用 | 继续补导流和内容编排 |
-| 面试模拟 | planned | doing | `/interview` 为占位入口 | 等后端正式业务域启动后再进入真实联调 |
+| 面试模拟 | planned | doing | `/interview` 与 `/interview/practice` 现可接占位接口 | 先接 `GET /api/interview/practice`，后续再进入真实业务域联调 |
 
 ## 4. 当前优先级
 

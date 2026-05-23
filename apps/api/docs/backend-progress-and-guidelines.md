@@ -77,6 +77,8 @@ packages/database  -> schema / seed / migrations
 - 简历能力
   - `POST /api/profile/resume/parse`
   - `POST /api/profile/resume/diagnose`
+- 面试占位工作区
+  - `GET /api/interview/practice`
 - 首页推荐
   - `GET /api/recommend/home`
   - `GET /api/daily-content/today`
@@ -155,8 +157,8 @@ packages/database  -> schema / seed / migrations
   - 目前不是可运行的正式导入工程
   - `schema.sql` 虽然已有导入相关表，但应用代码未交付
 - `interview`
-  - 前端已有 `/interview` 占位入口
-  - 后端当前没有正式 `interview` 业务模块和公共接口
+  - 前端已有 `/interview` 与 `/interview/practice` 占位入口
+  - 后端当前只提供占位工作区读取接口，不代表正式 `interview` 业务域已完成
 - `apps/admin`
   - 仅预留目录
   - 不在当前交付范围

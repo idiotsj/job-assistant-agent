@@ -192,6 +192,6 @@ pnpm dev:web
 ## 8. 当前明确不应误解为已完成的能力
 
 - `apps/ingest` 不是本轮可部署能力
-- `/interview` 目前仍是前端占位入口，不是正式后端业务域
+- `/interview` / `/interview/practice` 当前仍是占位工作区，只有轻量占位接口，不是正式后端业务域
 - WebSocket 只是通知通道，不是权威结果源
 - 没有 worker 时，异步任务接口只能创建任务，不能完成执行
