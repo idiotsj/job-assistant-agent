@@ -12,8 +12,5 @@
     "test": "pnpm --filter api test && pnpm --filter web test",
     "test:ai": "python -m pytest apps/ai-service/tests",
     "typecheck": "pnpm --filter @job-assistant/contracts typecheck && pnpm --filter api typecheck && pnpm --filter web typecheck"
-  },
-  "devDependencies": {
-    "typescript": "^6.0.3"
   }
 }
