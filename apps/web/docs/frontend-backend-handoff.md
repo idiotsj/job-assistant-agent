@@ -8,7 +8,7 @@
 - 异步任务闭环联调
 - 部署前核对
 
-最后更新：`2026-05-08`
+最后更新：`2026-05-24`
 
 ## 1. 当前项目真相
 
@@ -40,7 +40,8 @@ packages/
 
 - `apps/ingest` 不是当前可运行能力
 - `/interview` 与 `/interview/practice` 当前仍是占位工作区
-- 后端现已提供 `GET /api/interview/practice`，但它只返回占位工作区元数据，不代表正式面试业务域已完成
+- 后端现已提供 `GET /api/interview/practice`，前端练习区应以它为真相源
+- 该接口只返回占位工作区元数据，不代表正式面试业务域已完成
 - `apps/admin` 仍未实现
 
 ## 2. 当前可联调能力
@@ -77,6 +78,8 @@ packages/
 - 岗位定向改写建议
   - 同步接口仍保留：`POST /api/jobs/:id/resume/rewrite-suggestions`
   - 当前更推荐异步增强入口：`POST /api/jobs/:id/resume/rewrite-suggestions/tasks`
+- 面试练习区占位工作区
+  - `GET /api/interview/practice`
 
 ### 2.3 当前推荐的岗位页闭环
 
@@ -210,6 +213,13 @@ $env:API_PROXY_TARGET="http://localhost:3001"
 - query string 构造
 - `ApiError`
 - contract 校验
+
+当前已接入的关键 wrapper：
+
+- `src/lib/api/profile.ts`
+- `src/lib/api/jobs.ts`
+- `src/lib/api/ai-tasks.ts`
+- `src/lib/api/interview.ts`
 
 ### 5.2 错误语义
 
@@ -359,7 +369,8 @@ $env:API_PROXY_TARGET="http://localhost:3001"
 ### 8.5 `/interview`
 
 - 当前只能当作占位入口和未来工作区预留
-- 可联调占位接口：`GET /api/interview/practice`
+- `/interview/practice` 当前应直接消费 `GET /api/interview/practice`
+- 该接口的作用是给前端一个真实 `/api` 入口，而不是伪装成完整面试训练后端
 - 不应向用户暗示真实面试训练、题目流或评分后端已上线
 
 ## 9. 当前容易踩坑的点
@@ -377,6 +388,7 @@ $env:API_PROXY_TARGET="http://localhost:3001"
 - [backend-api.md](/D:/code/work%20agent/apps/api/docs/backend-api.md)
 - [backend-progress-and-guidelines.md](/D:/code/work%20agent/apps/api/docs/backend-progress-and-guidelines.md)
 - [deployment-checklist.md](/D:/code/work%20agent/apps/api/docs/deployment-checklist.md)
+- [demo-runbook.md](/D:/code/work%20agent/apps/api/docs/demo-runbook.md)
 - [frontend-progress-todo.md](/D:/code/work%20agent/apps/web/docs/frontend-progress-todo.md)
 - `packages/contracts/src/*`
 - `apps/web/src/lib/api/*`

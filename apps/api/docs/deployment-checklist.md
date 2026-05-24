@@ -8,7 +8,7 @@
 - 避免出现“本地能跑，但云端少进程、少变量、少代理配置”的问题
 - 明确当前异步 AI 任务链路需要的最小运行组合
 
-最后更新：`2026-05-23`
+最后更新：`2026-05-24`
 
 ## 1. 当前最小运行组合
 
@@ -195,3 +195,9 @@ pnpm dev:web
 - `/interview` / `/interview/practice` 当前仍是占位工作区，只有轻量占位接口，不是正式后端业务域
 - WebSocket 只是通知通道，不是权威结果源
 - 没有 worker 时，异步任务接口只能创建任务，不能完成执行
+
+## 9. 相关文档
+
+- [演示 Runbook](/D:/code/work%20agent/apps/api/docs/demo-runbook.md)
+- [部署与运行手册](/D:/code/work%20agent/apps/api/docs/deployment-guide.md)
+- [后端接口文档](/D:/code/work%20agent/apps/api/docs/backend-api.md)

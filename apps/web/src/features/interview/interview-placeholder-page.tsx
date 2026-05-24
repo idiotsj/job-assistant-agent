@@ -1,5 +1,6 @@
 "use client";
 
+import type { InterviewPracticeStatus, InterviewPracticeWorkspace } from "@job-assistant/contracts/interview";
 import {
   Shirt,
   Video,
@@ -11,11 +12,14 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { startTransition, useEffect, useState } from "react";
 
-import { Card } from "@/components/ui/card";
+import { useAuthSession } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { getInterviewPracticeWorkspace } from "@/lib/api/interview";
+import { formatUserFacingError } from "@/lib/errors";
 
-/* ── 硬编码数据 ── */
 const ETIQUETTE_ITEMS = [
   {
     icon: Shirt,
@@ -29,38 +33,70 @@ const ETIQUETTE_ITEMS = [
   },
 ];
 
-const AI_ADVICE = {
-  title: "AI 智能建议",
-  desc: "建议今日练习'如何进行自我介绍'，AI 导师已为你生成了针对你为主管面的个性化开场白。",
-  cta: "立即前往",
+const DEMO_WORKSPACE: InterviewPracticeWorkspace = {
+  status: "building",
+  title: "面试模拟练习区",
+  summary: "当前先提供一个可联调的占位工作区，帮助前端对齐后端边界和演示路径。",
+  availableModules: [
+    {
+      id: "etiquette",
+      title: "面试礼仪与环境准备",
+      description: "承接礼仪提示、设备检查和面试前准备建议。",
+    },
+    {
+      id: "mentor",
+      title: "AI 导师入口",
+      description: "为未来的模拟面试舞台、问答训练和复盘反馈预留统一入口。",
+    },
+    {
+      id: "review",
+      title: "复盘与成长记录",
+      description: "承接后续评分摘要、复盘记录和行动建议。",
+    },
+  ],
+  suggestion: {
+    title: "当前建议先完成投递前准备",
+    summary: "在正式面试引擎上线前，优先把简历诊断、岗位分析和改写建议跑顺。",
+    ctaLabel: "继续完善简历与岗位准备",
+  },
+  recommendedActions: [
+    "先完成一轮简历诊断，补齐最关键的表达短板。",
+    "对目标岗位跑一次岗位定向分析，确认匹配点和缺口。",
+    "把需要强化的项目经历整理成 2 到 3 个可口述案例。",
+  ],
 };
 
-const AI_MENTOR = {
+const DEMO_INTERVIEW_ADVICE = {
+  title: "AI 智能建议",
+  desc: "建议今日练习“如何进行自我介绍”，先把岗位分析里最关键的匹配点整理成一段稳定开场白。",
+  cta: "进入练习区",
+};
+
+const DEMO_MENTOR = {
   avatar: "🤖",
   name: "AI 导师：HANG HANG",
   tags: ["AI 导师已就绪", "算法工程师 · 专项"],
   greeting:
-    "你好，我是你的面试导师。针对你投递的华为算法岗，我们要开始第一轮模拟吗？",
+    "你好，我是你的面试导师。当前先把岗位分析和简历表达准备扎实，后续我们再进入完整模拟。",
 };
 
-const ANALYSIS = {
-  radarLabels: ["表达力", "专业", "应变力", "逻辑性", "和力"],
+const DEMO_ANALYSIS = {
+  radarLabels: ["表达力", "专业", "应变力", "逻辑性", "亲和力"],
   radarValues: [78, 85, 72, 90, 68],
   winRate: 82,
   aiAdvice:
-    "你在临场处理上表现优异，但在'边界情况处理描述'上还有提升空间。建议今日重点练习异常处理类话术。",
+    "你在临场处理上表现优异，但在“边界情况处理描述”上还有提升空间。建议今日重点练习异常处理类话术。",
 };
 
-/* ── 辅助：雷达图 SVG ── */
 function InterviewRadarChart({ labels, values }: { labels: string[]; values: number[] }) {
   const center = 100;
   const radius = 70;
   const angleStep = (Math.PI * 2) / labels.length;
 
-  const points = values.map((v, i) => {
-    const angle = i * angleStep - Math.PI / 2;
-    const r = (v / 100) * radius;
-    return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+  const points = values.map((value, index) => {
+    const angle = index * angleStep - Math.PI / 2;
+    const pointRadius = (value / 100) * radius;
+    return `${center + pointRadius * Math.cos(angle)},${center + pointRadius * Math.sin(angle)}`;
   });
 
   return (
@@ -72,21 +108,21 @@ function InterviewRadarChart({ labels, values }: { labels: string[]; values: num
         </radialGradient>
       </defs>
       <circle cx={center} cy={center} r={radius + 10} fill="url(#interview-radar-glow)" />
-      {[20, 40, 60, 80].map((r) => (
+      {[20, 40, 60, 80].map((gridRadius) => (
         <polygon
-          key={r}
-          points={Array.from({ length: labels.length }, (_, i) => {
-            const angle = i * angleStep - Math.PI / 2;
-            return `${center + (r / 100) * radius * Math.cos(angle)},${center + (r / 100) * radius * Math.sin(angle)}`;
+          key={gridRadius}
+          points={Array.from({ length: labels.length }, (_, index) => {
+            const angle = index * angleStep - Math.PI / 2;
+            return `${center + (gridRadius / 100) * radius * Math.cos(angle)},${center + (gridRadius / 100) * radius * Math.sin(angle)}`;
           }).join(" ")}
           className="interview-radar__grid"
         />
       ))}
-      {labels.map((_, i) => {
-        const angle = i * angleStep - Math.PI / 2;
+      {labels.map((_, index) => {
+        const angle = index * angleStep - Math.PI / 2;
         return (
           <line
-            key={i}
+            key={index}
             x1={center}
             y1={center}
             x2={center + radius * Math.cos(angle)}
@@ -95,25 +131,22 @@ function InterviewRadarChart({ labels, values }: { labels: string[]; values: num
           />
         );
       })}
-      <polygon
-        points={points.join(" ")}
-        className="interview-radar__data"
-      />
-      {values.map((v, i) => {
-        const angle = i * angleStep - Math.PI / 2;
-        const r = (v / 100) * radius;
+      <polygon points={points.join(" ")} className="interview-radar__data" />
+      {values.map((value, index) => {
+        const angle = index * angleStep - Math.PI / 2;
+        const pointRadius = (value / 100) * radius;
         return (
           <circle
-            key={i}
-            cx={center + r * Math.cos(angle)}
-            cy={center + r * Math.sin(angle)}
+            key={index}
+            cx={center + pointRadius * Math.cos(angle)}
+            cy={center + pointRadius * Math.sin(angle)}
             r="3.5"
             className="interview-radar__dot"
           />
         );
       })}
-      {labels.map((label, i) => {
-        const angle = i * angleStep - Math.PI / 2;
+      {labels.map((label, index) => {
+        const angle = index * angleStep - Math.PI / 2;
         const labelRadius = radius + 20;
         return (
           <text
@@ -134,18 +167,187 @@ function InterviewRadarChart({ labels, values }: { labels: string[]; values: num
   );
 }
 
-/* ── 页面 ── */
-export function InterviewPlaceholderPage() {
+function getWorkspaceStatusLabel(status: InterviewPracticeStatus) {
+  return status === "building" ? "建设中" : "规划中";
+}
+
+function getSyncNote(
+  sessionStatus: "loading" | "authenticated" | "unauthenticated",
+  isPracticeRoute: boolean,
+  workspaceMode: "demo" | "live",
+) {
+  if (sessionStatus === "loading") {
+    return "正在确认当前登录状态，稍后就会决定是否同步真实占位工作区。";
+  }
+
+  if (sessionStatus !== "authenticated") {
+    return isPracticeRoute
+      ? "当前先展示练习区预览；登录后会同步真实占位工作区状态，但不会伪装成完整面试引擎。"
+      : "当前先展示面试模块预览；登录后进入练习区时会同步真实占位工作区状态。";
+  }
+
+  return workspaceMode === "live"
+    ? "当前练习区已接上真实占位接口，但完整题目流、AI 陪练和评分能力仍在后续阶段。"
+    : "当前先保留演示预览，避免工作区在接口异常时出现空白。";
+}
+
+export function InterviewPlaceholderPage({ mode = "hub" }: { mode?: "hub" | "practice" }) {
   const router = useRouter();
+  const { status: sessionStatus } = useAuthSession();
+  const isPracticeRoute = mode === "practice";
+  const [workspace, setWorkspace] = useState<InterviewPracticeWorkspace | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<"demo" | "live">("demo");
+  const [message, setMessage] = useState(
+    isPracticeRoute
+      ? "当前页面会优先同步真实占位工作区状态；完整面试引擎仍在后续阶段。"
+      : "当前先展示面试模块总览；进入练习区后会继续同步真实占位工作区状态。",
+  );
+  const [messageTone, setMessageTone] = useState<"info" | "success">("info");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (sessionStatus === "loading") {
+      return;
+    }
+
+    if (sessionStatus !== "authenticated") {
+      startTransition(() => {
+        setWorkspace(null);
+        setWorkspaceMode("demo");
+        setErrorMessage("");
+        setMessage(
+          isPracticeRoute
+            ? "登录后会同步真实练习区状态；当前先保留占位预览，方便继续演示页面结构。"
+            : "当前先展示面试模块总览；登录后再进入练习区同步真实占位工作区。",
+        );
+        setMessageTone("info");
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    startTransition(() => {
+      setErrorMessage("");
+      setMessage("正在同步当前面试工作区状态。");
+      setMessageTone("info");
+    });
+
+    void getInterviewPracticeWorkspace()
+      .then((nextWorkspace) => {
+        if (cancelled) {
+          return;
+        }
+
+        startTransition(() => {
+          setWorkspace(nextWorkspace);
+          setWorkspaceMode("live");
+          setMessage(
+            isPracticeRoute
+              ? "练习区已切到真实占位接口结果；完整题目流和 AI 陪练仍在建设中。"
+              : "面试工作区状态已同步；当前首页入口仍以占位工作区和演示内容为主。",
+          );
+          setMessageTone("success");
+        });
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+
+        startTransition(() => {
+          setWorkspace(null);
+          setWorkspaceMode("demo");
+          setMessage(
+            isPracticeRoute
+              ? "当前先保留演示占位工作区，避免练习区在接口异常时出现空白。"
+              : "当前先保留面试模块预览，稍后可以再同步真实工作区状态。",
+          );
+          setMessageTone("info");
+          setErrorMessage(formatUserFacingError(error, "面试工作区暂时没同步到，当前先保留演示内容。"));
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPracticeRoute, sessionStatus]);
+
+  const resolvedWorkspace = workspace ?? DEMO_WORKSPACE;
+  const mentorTags =
+    workspaceMode === "live"
+      ? resolvedWorkspace.availableModules.slice(0, 2).map((module) => module.title)
+      : DEMO_MENTOR.tags;
+  const mentorGreeting = workspaceMode === "live" ? resolvedWorkspace.summary : DEMO_MENTOR.greeting;
+  const adviceTitle = isPracticeRoute ? resolvedWorkspace.suggestion.title : DEMO_INTERVIEW_ADVICE.title;
+  const adviceDescription = isPracticeRoute ? resolvedWorkspace.suggestion.summary : DEMO_INTERVIEW_ADVICE.desc;
+  const adviceCta =
+    isPracticeRoute && sessionStatus !== "authenticated"
+      ? "登录后同步练习区"
+      : isPracticeRoute
+        ? resolvedWorkspace.suggestion.ctaLabel
+        : DEMO_INTERVIEW_ADVICE.cta;
+  const analysisAdvice =
+    workspaceMode === "live" ? resolvedWorkspace.recommendedActions[0] ?? DEMO_ANALYSIS.aiAdvice : DEMO_ANALYSIS.aiAdvice;
+
+  function handlePrimaryAction() {
+    if (!isPracticeRoute) {
+      router.push("/interview/practice");
+      return;
+    }
+
+    router.push(sessionStatus === "authenticated" ? "/resume" : "/login");
+  }
 
   return (
     <div className="interview-page">
-      {/* 标题区 */}
       <div className="interview-page__header">
-        <h1>面试模拟</h1>
+        <h1>{isPracticeRoute ? resolvedWorkspace.title : "面试模拟"}</h1>
       </div>
 
-      {/* 面试礼仪须知 */}
+      {message ? (
+        <div className={`message-strip${messageTone === "success" ? " message-strip--success" : ""}`}>{message}</div>
+      ) : null}
+      {errorMessage ? <div className="message-strip message-strip--error">{errorMessage}</div> : null}
+
+      <div className={`panel-note${sessionStatus !== "authenticated" ? " panel-note--warning" : ""}`}>
+        <Sparkles size={16} />
+        <span>{getSyncNote(sessionStatus, isPracticeRoute, workspaceMode)}</span>
+      </div>
+
+      <section className="interview-section">
+        <div className="interview-section__title-bar">
+          <h2>
+            <TrendingUp size={16} />
+            当前工作区状态
+          </h2>
+        </div>
+        <Card>
+          <div className="page-stack">
+            <div className="tag-row">
+              <span className={`wa-badge ${workspaceMode === "live" ? "wa-badge--success" : "wa-badge--neutral"}`}>
+                {workspaceMode === "live" ? "live 占位接口" : "demo 预览"}
+              </span>
+              <span className="wa-badge wa-badge--info">{getWorkspaceStatusLabel(resolvedWorkspace.status)}</span>
+            </div>
+
+            <p className="drawer-copy">{resolvedWorkspace.summary}</p>
+
+            <div className="list-stack">
+              {resolvedWorkspace.availableModules.map((module) => (
+                <div key={module.id} className="list-item">
+                  <ArrowRight size={16} />
+                  <div>
+                    <strong>{module.title}</strong>
+                    <span>{module.description}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </section>
+
       <section className="interview-section">
         <div className="interview-section__title-bar">
           <h2>面试礼仪须知</h2>
@@ -171,7 +373,6 @@ export function InterviewPlaceholderPage() {
         </div>
       </section>
 
-      {/* AI 智能建议 */}
       <section className="interview-section">
         <Card className="interview-ai-advice">
           <div className="interview-ai-advice__body">
@@ -179,25 +380,20 @@ export function InterviewPlaceholderPage() {
               <Sparkles size={18} />
             </div>
             <div>
-              <strong>{AI_ADVICE.title}</strong>
-              <p>{AI_ADVICE.desc}</p>
+              <strong>{adviceTitle}</strong>
+              <p>{adviceDescription}</p>
             </div>
           </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => router.push("/interview/practice")}
-          >
-            {AI_ADVICE.cta}
+          <Button variant="primary" size="sm" onClick={handlePrimaryAction}>
+            {adviceCta}
           </Button>
         </Card>
       </section>
 
-      {/* AI 导师模拟面试 */}
       <section className="interview-section">
         <Card className="interview-mentor">
           <div className="interview-mentor__tags">
-            {AI_MENTOR.tags.map((tag) => (
+            {mentorTags.map((tag) => (
               <span key={tag} className="interview-mentor__tag">
                 {tag}
               </span>
@@ -205,20 +401,17 @@ export function InterviewPlaceholderPage() {
           </div>
 
           <div className="interview-mentor__avatar">
-            <span>{AI_MENTOR.avatar}</span>
+            <span>{DEMO_MENTOR.avatar}</span>
           </div>
 
           <div className="interview-mentor__name">
-            <span>{AI_MENTOR.name}</span>
+            <span>{DEMO_MENTOR.name}</span>
           </div>
 
-          <p className="interview-mentor__greeting">
-            "{AI_MENTOR.greeting}"
-          </p>
+          <p className="interview-mentor__greeting">"{mentorGreeting}"</p>
         </Card>
       </section>
 
-      {/* 智能分析复盘与总结 */}
       <section className="interview-section">
         <div className="interview-section__title-bar">
           <h2>
@@ -232,10 +425,7 @@ export function InterviewPlaceholderPage() {
 
         <Card className="interview-analysis">
           <div className="interview-analysis__left">
-            <InterviewRadarChart
-              labels={ANALYSIS.radarLabels}
-              values={ANALYSIS.radarValues}
-            />
+            <InterviewRadarChart labels={DEMO_ANALYSIS.radarLabels} values={DEMO_ANALYSIS.radarValues} />
           </div>
 
           <div className="interview-analysis__right">
@@ -244,21 +434,34 @@ export function InterviewPlaceholderPage() {
               <div className="interview-analysis__winrate-bar">
                 <div
                   className="interview-analysis__winrate-fill"
-                  style={{ width: `${ANALYSIS.winRate}%` }}
+                  style={{ width: `${DEMO_ANALYSIS.winRate}%` }}
                 />
               </div>
-              <span className="interview-analysis__winrate-num">
-                {ANALYSIS.winRate}
-              </span>
+              <span className="interview-analysis__winrate-num">{DEMO_ANALYSIS.winRate}</span>
             </div>
 
             <div className="interview-analysis__ai-tip">
               <MessageSquare size={14} />
               <p>
                 <strong>AI 建议：</strong>
-                {ANALYSIS.aiAdvice}
+                {analysisAdvice}
               </p>
             </div>
+          </div>
+        </Card>
+      </section>
+
+      <section className="interview-section">
+        <Card>
+          <div className="page-stack">
+            <div className="interview-section__title-bar">
+              <h2>当前推荐行动</h2>
+            </div>
+            <ul className="checklist">
+              {resolvedWorkspace.recommendedActions.map((action) => (
+                <li key={action}>{action}</li>
+              ))}
+            </ul>
           </div>
         </Card>
       </section>

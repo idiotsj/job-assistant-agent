@@ -30,6 +30,7 @@ packages/
 - 用户注册、登录、Cookie Session
 - 用户画像管理
 - 首页分区推荐
+- 面试练习区占位接口
 - 岗位、企业、学生案例、活动查询
 - 日程聚合
 - 考研 / 考公频道
@@ -47,7 +48,7 @@ packages/
 
 说明：
 
-- `/interview` 目前只是前端占位入口
+- `/interview` / `/interview/practice` 当前接的是占位工作区，不是完整面试引擎
 - `apps/ingest` 目前不能当作已实现的导入层来使用
 
 ## 技术栈
@@ -176,6 +177,8 @@ python -m pytest apps/ai-service/tests
 
 - [后端接口文档](/D:/code/work%20agent/apps/api/docs/backend-api.md)
 - [后端进度与规范](/D:/code/work%20agent/apps/api/docs/backend-progress-and-guidelines.md)
+- [演示 Runbook](/D:/code/work%20agent/apps/api/docs/demo-runbook.md)
+- [部署与运行手册](/D:/code/work%20agent/apps/api/docs/deployment-guide.md)
 - [部署检查清单](/D:/code/work%20agent/apps/api/docs/deployment-checklist.md)
 - [前后端交接文档](/D:/code/work%20agent/apps/web/docs/frontend-backend-handoff.md)
 - [前后端对齐 Todo](/D:/code/work%20agent/apps/web/docs/frontend-progress-todo.md)

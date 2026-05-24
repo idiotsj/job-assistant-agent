@@ -16,7 +16,7 @@
 - `packages/database`
 - 未来的 `apps/ingest`
 
-最后更新：`2026-05-23`
+最后更新：`2026-05-24`
 
 ## 1. 当前项目判断
 
@@ -158,7 +158,8 @@ packages/database  -> schema / seed / migrations
   - `schema.sql` 虽然已有导入相关表，但应用代码未交付
 - `interview`
   - 前端已有 `/interview` 与 `/interview/practice` 占位入口
-  - 后端当前只提供占位工作区读取接口，不代表正式 `interview` 业务域已完成
+- 后端当前只提供占位工作区读取接口，不代表正式 `interview` 业务域已完成
+- 当前前端 `/interview/practice` 已可消费该占位接口，适合演示真实 `/api` 联调，但不应误报为完整面试能力
 - `apps/admin`
   - 仅预留目录
   - 不在当前交付范围
@@ -186,6 +187,7 @@ packages/database  -> schema / seed / migrations
 6. `GET /api/ai/tasks/:id` 返回最终结果
 7. WebSocket 可用时收到通知
 8. WebSocket 不可用时页面自动降级到轮询
+9. `/interview/practice` 能同步占位工作区数据
 
 ## 5. 当前开发优先级
 
@@ -351,6 +353,7 @@ packages/database  -> schema / seed / migrations
 
 - [backend-api.md](/D:/code/work%20agent/apps/api/docs/backend-api.md)
 - [deployment-checklist.md](/D:/code/work%20agent/apps/api/docs/deployment-checklist.md)
+- [demo-runbook.md](/D:/code/work%20agent/apps/api/docs/demo-runbook.md)
 - 本文档
 - [frontend-backend-handoff.md](/D:/code/work%20agent/apps/web/docs/frontend-backend-handoff.md)
 - [frontend-progress-todo.md](/D:/code/work%20agent/apps/web/docs/frontend-progress-todo.md)

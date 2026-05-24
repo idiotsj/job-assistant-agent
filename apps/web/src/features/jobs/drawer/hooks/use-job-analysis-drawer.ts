@@ -260,36 +260,11 @@ export function useJobAnalysisDrawer(job: Job | null): JobAnalysisDrawerControll
           return;
         }
 
-        setActiveTaskId(latestTask.id);
-        setRewriteTaskStatus(latestTask.status);
-        rewriteTaskStatusRef.current = latestTask.status;
-
-        if (terminalTaskStatuses.has(latestTask.status)) {
-          const latestTaskResult = latestTask.result;
-
-          if (latestTask.status === "succeeded" && isRewriteTaskResult(latestTaskResult)) {
-            startTransition(() => {
-              setRewrite(latestTaskResult);
-              setRewriteMode("live");
-              setMessage("已恢复当前岗位最近一次完成的改写建议结果。");
-              setMessageTone("success");
-              setErrorMessage("");
-            });
-            return;
-          }
-
-          if (latestTask.status === "failed" || latestTask.status === "cancelled") {
-            startTransition(() => {
-              setErrorMessage(getAiTaskFailureMessage(latestTask));
-            });
-            return;
-          }
+        const latestTaskDetails = await refreshTask(latestTask.id);
+        if (!latestTaskDetails || terminalTaskStatuses.has(latestTaskDetails.status)) {
+          return;
         }
 
-        startTransition(() => {
-          setMessage(getAiTaskPendingMessage(latestTask, "polling"));
-          setMessageTone("info");
-        });
         startTaskMonitoring(latestTask.id);
       } catch {
         // Silent recovery failure: the drawer can still work through fresh task creation.
